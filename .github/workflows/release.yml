@@ -36,8 +36,15 @@ jobs:
       - name: Build release APK
         run: chmod +x gradlew && ./gradlew assembleRelease
 
+      - name: Rename APK with version and date
+        run: |
+          VERSION="${{ github.ref_name }}"
+          DATE=$(date +%Y%m%d)
+          mv app/build/outputs/apk/release/Kaasu-release.apk \
+             "app/build/outputs/apk/release/Kaasu-${VERSION}-${DATE}.apk"
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/release/Kaasu-release.apk
+          files: app/build/outputs/apk/release/Kaasu-*.apk
           generate_release_notes: true

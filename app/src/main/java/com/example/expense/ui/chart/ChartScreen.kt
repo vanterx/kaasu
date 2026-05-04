@@ -62,7 +62,6 @@ fun ChartScreen(viewModel: ChartViewModel, currencyCode: String) {
     val (month, year) = monthYear
 
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
-    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Scaffold(
         topBar = {
@@ -70,7 +69,7 @@ fun ChartScreen(viewModel: ChartViewModel, currencyCode: String) {
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Charts", style = MaterialTheme.typography.titleMedium)
+                        Text("Reports", style = MaterialTheme.typography.titleMedium)
                         Text(
                             formatMonthYear(month, year),
                             style = MaterialTheme.typography.bodySmall,
