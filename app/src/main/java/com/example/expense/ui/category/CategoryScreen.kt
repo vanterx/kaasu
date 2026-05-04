@@ -1,5 +1,6 @@
 package com.example.expense.ui.category
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -148,7 +149,11 @@ private fun CategoryCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -158,7 +163,7 @@ private fun CategoryCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(16.dp)
+                    .size(20.dp)
                     .background(ChartColors[category.colorIndex % ChartColors.size], CircleShape)
             )
             Spacer(modifier = Modifier.width(12.dp))
