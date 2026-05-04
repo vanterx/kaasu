@@ -56,7 +56,15 @@ fun ChartScreen(viewModel: ChartViewModel, currencyCode: String) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Charts") },
+                title = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Charts", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            formatMonthYear(month, year),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.previousMonth() }) {
                         Icon(Icons.Default.ChevronLeft, "Previous month")
