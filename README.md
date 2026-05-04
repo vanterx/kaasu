@@ -1,18 +1,21 @@
 # Kaasu — Personal Expense Tracker
 
+"Kaasu" most commonly refers to the Tamil word for money, cash, or coin, often symbolizing wealth in South Indian culture. Historically, it represented small gold, silver, or copper coins and is considered the origin of the English word "cash".
+
 A clean, offline Android expense tracker built with Jetpack Compose and Material 3. Premium light luxury design with warm cream surfaces and gold accents.
 
 ## Screenshots
 
-| Expenses | Charts | Categories | Export |
-|----------|--------|------------|--------|
-| Monthly list with hero total, add/edit/delete | Donut chart with centre total + bar breakdowns | Colour-coded categories | CSV export |
+| Expenses | Reports | Export |
+|----------|---------|--------|
+| Day view with date picker, add/edit/delete | Donut chart with centre total + bar breakdowns | CSV export |
 
 ## Features
 
+- **Date-based tracking** — defaults to today's expenses, date picker to jump to any date
 - **Track expenses** — amount, description, category, date
-- **Monthly view** — navigate months, hero-sized total, day filter
-- **Charts** — donut chart with centre total, per-category progress bars (Compose Canvas, no third-party libs)
+- **Reports** — donut chart with centre total, per-category progress bars (Compose Canvas, no third-party libs)
+- **Global settings** — manage categories and currency from a unified settings screen (top-right gear icon)
 - **Categories** — 8 defaults seeded on first launch, 12-colour picker, fully customizable
 - **CSV Export** — export all expenses via Android SAF file picker (no storage permission)
 - **Multi-currency** — 10 currencies, NZD default, persisted with DataStore
@@ -26,7 +29,7 @@ A clean, offline Android expense tracker built with Jetpack Compose and Material
 | UI | Jetpack Compose + Material 3 |
 | Architecture | MVVM + Repository |
 | Database | Room (SQLite) |
-| Navigation | Navigation Compose |
+| Navigation | Navigation Compose (3 bottom tabs + overlay screens) |
 | DI | Manual (App container) |
 | Charts | Compose Canvas |
 | Preferences | DataStore |
@@ -61,11 +64,11 @@ app/src/main/java/com/example/expense/
 │   ├── model/                    # Entities
 │   └── repository/               # Repositories
 ├── ui/
-│   ├── navigation/               # NavGraph + bottom bar
+│   ├── navigation/               # NavGraph + 3-tab bottom bar
 │   ├── theme/                    # Material 3 theme (premium palette)
-│   ├── expense/                  # List + add/edit
-│   ├── category/                 # Category management
-│   ├── chart/                    # Pie/bar charts
+│   ├── expense/                  # Day-based expense list + add/edit
+│   ├── chart/                    # Reports: pie/bar charts
+│   ├── settings/                 # Global settings (categories + currency)
 │   └── export/                   # CSV export
 └── util/                         # Currency/date formatting, CSV writer
 scripts/
@@ -76,4 +79,4 @@ scripts/
 
 Get the latest APK from [Releases](https://github.com/vanterx/kaasu/releases).
 
-Current version: **1.2.0**
+Current version: **1.4.0**

@@ -55,13 +55,14 @@ app/src/main/java/com/example/expense/
 │       ├── ExpenseRepository.kt
 │       └── CategoryRepository.kt
 ├── ui/
-│   ├── navigation/NavGraph.kt       # All routes + bottom nav bar (4 tabs)
+│   ├── navigation/NavGraph.kt       # All routes + bottom nav bar (3 tabs)
 │   ├── theme/
 │   │   ├── Color.kt                 # Premium palette tokens
 │   │   └── Theme.kt                 # Custom light + dark color schemes
-│   ├── expense/                     # Expense list, add/edit, ViewModel, CurrencyPicker
-│   ├── category/                    # Category management, ViewModel
+│   ├── expense/                     # Day-based expense list, add/edit, ViewModel, CurrencyPicker
+│   ├── category/                    # Category list content + dialog (used by settings)
 │   ├── chart/                       # Pie/bar charts via Compose Canvas
+│   ├── settings/                    # Global settings (categories + currency)
 │   └── export/                      # CSV export via SAF
 └── util/
     ├── CsvExporter.kt               # CSV generation
@@ -77,7 +78,7 @@ scripts/
 - **MVVM + Repository**: UI → ViewModel → Repository → Room DAO → SQLite
 - **Manual DI**: `ExpenseApp` holds singleton instances, passed via `ViewModelProvider.Factory`
 - **StateFlow**: All data flows are `StateFlow` collected as Compose state
-- **Navigation**: `NavHost` with 4 bottom-bar destinations + 2 overlay screens (add/edit expense)
+- **Navigation**: `NavHost` with 3 bottom-bar destinations (Expenses, Reports, Export) + 3 overlay screens (add/edit expense, settings)
 - **Min SDK**: 26 (Android 8), **Target SDK**: 34
 
 ## Key Conventions

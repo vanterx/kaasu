@@ -53,5 +53,5 @@ fun `saving expense updates list`() = runTest {
 - Day-boundary midnight calculation is duplicated in `ExpenseViewModel` — extract to `Formatters.kt` when touching that file.
 - Release build has `isMinifyEnabled = false` — enable R8 shrinking before a Play Store release.
 - `android.app.DatePickerDialog` (legacy View) used instead of M3 `DatePicker` composable in expense screens.
-- `"add_expense"` / `"edit_expense"` navigation routes are string literals — should be sealed `Screen` objects for consistency.
+- `"add_expense"`, `"edit_expense"`, and `"settings"` navigation routes are string literals — should be sealed `Screen` objects for consistency.
 - No unit tests exist for any ViewModel or Repository.
