@@ -26,6 +26,12 @@ if git diff --cached --name-only | grep -q "app/build.gradle.kts"; then
     warn "versionName bumped: $OLD → $NEW"
     warn "Remember to push a release tag after merging to main:"
     info "  git tag v${NEW} && git push origin v${NEW}"
+
+    # Check if README.md version also needs updating
+    README_VER=$(grep 'Current version' README.md 2>/dev/null | grep -o '\*\*[^*]*\*\*' | sed 's/\*\*//g')
+    if [ "$README_VER" != "$NEW" ]; then
+      warn "README.md still shows version ${README_VER}. Don't forget to update it."
+    fi
     echo >&2
   fi
 fi
