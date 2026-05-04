@@ -1,5 +1,21 @@
 # Contributing to Kaasu
 
+## Setup
+
+After cloning, install the project git hooks:
+
+```bash
+bash scripts/install-hooks.sh
+```
+
+This installs a pre-commit hook that reminds you to tag a release when:
+- `versionName` is bumped in `app/build.gradle.kts` — prints the exact tag command to run after merging
+- 10+ commits have accumulated since the last release tag — suggests tagging
+
+The hook is advisory only (never blocks a commit).
+
+---
+
 ## Workflows
 
 ### 1. Branching

@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Pre-commit hook: reminds about release tagging when appropriate.
+#
+# Checks:
+#   1. If versionName is being bumped in build.gradle.kts → remind to push a tag after merge.
+#   2. If 10+ commits have accumulated since the last release tag → suggest tagging.
+
+YELLOW='\033[0;33m'
+CYAN='\033[0;36m'
+RESET='\033[0m'
+
+warn() {
+  echo -e "${YELLOW}[release-check]${RESET} $*" >&2
+}
+
+info() {
+  echo -e "${CYAN}[release-check]${RESET} $*" >&2
+}
+
+# ── Check 1: versionName bump staged in build.gradle.kts ─────────────────────
+if git diff --cached --name-only | grep -q "app/build.gradle.kts"; then
+  OLD=$(git show HEAD:app/build.gradle.kts 2>/dev/null | grep 'versionName' | grep -o '"[^"]*"' | tr -d '"')
+  NEW=$(git show :app/build.gradle.kts 2>/dev/null | grep 'versionName' | grep -o '"[^"]*"' | tr -d '"')
+
+  if [ -n "$OLD" ] && [ -n "$NEW" ] && [ "$OLD" != "$NEW" ]; then
+    warn "versionName bumped: $OLD → $NEW"
+    warn "Remember to push a release tag after merging to main:"
+    info "  git tag v${NEW} && git push origin v${NEW}"
+    echo >&2
+  fi
+fi
+
+# ── Check 2: many untagged commits since last release tag ─────────────────────
+LAST_TAG=$(git describe --tags --abbrev=0 --match "v*" 2>/dev/null)
+
+if [ -z "$LAST_TAG" ]; then
+  COMMITS_SINCE=0
+else
+  COMMITS_SINCE=$(git rev-list "${LAST_TAG}..HEAD" --count 2>/dev/null || echo 0)
+fi
+
+THRESHOLD=10
+
+if [ "$COMMITS_SINCE" -ge "$THRESHOLD" ]; then
+  warn "$COMMITS_SINCE commits since last release tag ($LAST_TAG)."
+  warn "Consider bumping versionName and tagging a new release."
+  echo >&2
+fi
+
+exit 0
