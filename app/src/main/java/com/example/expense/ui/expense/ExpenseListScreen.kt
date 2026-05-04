@@ -57,6 +57,7 @@ import com.example.expense.data.model.Expense
 import com.example.expense.data.model.ExpenseWithCategory
 import com.example.expense.util.formatCurrency
 import com.example.expense.util.formatDateShort
+import com.example.expense.util.formatDayWithWeekday
 import com.example.expense.util.formatMonthYear
 import com.example.expense.util.isToday
 import java.util.Calendar
@@ -161,12 +162,23 @@ fun ExpenseListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            val displayTotal = if (selectedDay != null) (dayTotal ?: 0.0) else monthlyTotal
-            MonthlySummaryHeader(
-                total = displayTotal,
-                currencyCode = currencyCode,
-                label = if (selectedDay != null) "DAY TOTAL" else "MONTHLY TOTAL"
-            )
+            val currentDay = selectedDay
+            val displayTotal = if (currentDay != null) (dayTotal ?: 0.0) else monthlyTotal
+            if (currentDay != null) {
+                DayNavigationHeader(
+                    selectedDay = currentDay,
+                    total = displayTotal,
+                    currencyCode = currencyCode,
+                    onPreviousDay = { viewModel.selectDay(currentDay - 86_400_000L) },
+                    onNextDay = { viewModel.selectDay(currentDay + 86_400_000L) }
+                )
+            } else {
+                MonthlySummaryHeader(
+                    total = displayTotal,
+                    currencyCode = currencyCode,
+                    label = "MONTHLY TOTAL"
+                )
+            }
 
             if (dailyGroups.isEmpty()) {
                 Box(
@@ -227,6 +239,55 @@ fun ExpenseListScreen(
                 TextButton(onClick = { pendingDelete = null }) { Text("Cancel") }
             }
         )
+    }
+}
+
+@Composable
+private fun DayNavigationHeader(
+    selectedDay: Long,
+    total: Double,
+    currencyCode: String,
+    onPreviousDay: () -> Unit,
+    onNextDay: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            androidx.compose.material3.IconButton(onClick = onPreviousDay) {
+                Icon(Icons.Default.ChevronLeft, "Previous day")
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "DAY TOTAL",
+                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.5.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    formatCurrency(total, currencyCode),
+                    style = MaterialTheme.typography.displaySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    formatDayWithWeekday(selectedDay),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            androidx.compose.material3.IconButton(onClick = onNextDay) {
+                Icon(Icons.Default.ChevronRight, "Next day")
+            }
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 

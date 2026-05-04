@@ -15,10 +15,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Button
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -214,38 +219,65 @@ private fun DatePickerField(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        onClick = {
-            DatePickerDialog(
-                context,
-                { _, year, month, dayOfMonth ->
-                    Calendar.getInstance().apply {
-                        set(year, month, dayOfMonth, 0, 0, 0)
-                        set(Calendar.MILLISECOND, 0)
-                        onDateSelected(timeInMillis)
-                    }
-                },
-                calendar.get(Calendar.YEAR),
-                calendar.get(Calendar.MONTH),
-                calendar.get(Calendar.DAY_OF_MONTH)
-            ).show()
-        }
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 4.dp, vertical = 4.dp),
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
         ) {
-            Icon(
-                Icons.Default.CalendarMonth,
-                "Select date",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                formatDate(dateMillis),
-                style = MaterialTheme.typography.bodyLarge
-            )
+            IconButton(onClick = {
+                onDateSelected(dateMillis - 86_400_000L)
+            }) {
+                Icon(Icons.Default.ChevronLeft, "Previous day",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        DatePickerDialog(
+                            context,
+                            { _, year, month, dayOfMonth ->
+                                Calendar.getInstance().apply {
+                                    set(year, month, dayOfMonth, 0, 0, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                    onDateSelected(timeInMillis)
+                                }
+                            },
+                            calendar.get(Calendar.YEAR),
+                            calendar.get(Calendar.MONTH),
+                            calendar.get(Calendar.DAY_OF_MONTH)
+                        ).show()
+                    }
+                    .padding(vertical = 8.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Default.CalendarMonth,
+                    "Select date",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    formatDate(dateMillis),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+
+            IconButton(onClick = {
+                onDateSelected(dateMillis + 86_400_000L)
+            }) {
+                Icon(Icons.Default.ChevronRight, "Next day",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }

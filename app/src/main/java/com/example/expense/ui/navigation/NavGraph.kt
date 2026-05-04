@@ -43,7 +43,7 @@ import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     data object Expenses : Screen("expenses", "Expenses", Icons.AutoMirrored.Filled.ListAlt)
-    data object Charts : Screen("charts", "Charts", Icons.Default.BarChart)
+    data object Charts : Screen("charts", "Reports", Icons.Default.BarChart)
     data object Categories : Screen("categories", "Categories", Icons.Default.Category)
     data object Export : Screen("export", "Export", Icons.Default.FileDownload)
 }
