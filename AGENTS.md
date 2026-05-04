@@ -50,10 +50,15 @@ app/src/main/java/com/example/expense/
 │   ├── model/
 │   │   ├── Expense.kt               # Room entity (id, amount, description, categoryId, date)
 │   │   ├── Category.kt              # Room entity (id, name, colorIndex)
-│   │   └── ExpenseWithCategory.kt   # Relation mapping
+│   │   ├── ExpenseWithCategory.kt   # Room @Relation mapping
+│   │   └── ExpenseDisplay.kt        # Pure-Kotlin display model (no Room annotations)
+│   ├── mapper/
+│   │   └── Mappers.kt               # Entity ↔ Display extension functions
 │   └── repository/
-│       ├── ExpenseRepository.kt
-│       └── CategoryRepository.kt
+│       ├── ExpenseRepository.kt     # Interface (abstracts DAO)
+│       ├── ExpenseRepositoryImpl.kt # Implementation wrapping ExpenseDao
+│       ├── CategoryRepository.kt    # Interface
+│       └── CategoryRepositoryImpl.kt# Implementation, seeds defaults
 ├── ui/
 │   ├── navigation/NavGraph.kt       # All routes + bottom nav bar (3 tabs)
 │   ├── theme/
@@ -65,9 +70,14 @@ app/src/main/java/com/example/expense/
 │   ├── settings/                    # Global settings (categories + currency)
 │   └── export/                      # CSV export via SAF
 └── util/
+    ├── AppResult.kt                  # Success/Error sealed class
     ├── CsvExporter.kt               # CSV generation
     ├── Formatters.kt                # Currency & date formatting
     └── PreferencesManager.kt        # DataStore currency preference
+.backlog/                             # Feature roadmap (gitignored)
+.claude/
+└── docs/
+    └── architectural_patterns.md    # 12 extracted codebase patterns
 scripts/
 ├── install-hooks.sh                 # One-time hook installation
 └── hooks/pre-commit                 # Release tagging reminder hook
@@ -75,8 +85,10 @@ scripts/
 
 ## Architecture
 
-- **MVVM + Repository**: UI → ViewModel → Repository → Room DAO → SQLite
-- **Manual DI**: `ExpenseApp` holds singleton instances, passed via `ViewModelProvider.Factory`
+- **MVVM + Repository**: UI → ViewModel → Repository (interface) → RepositoryImpl → Room DAO → SQLite
+- **Manual DI**: `ExpenseApp` holds singleton instances (interfaces), passed via `ViewModelProvider.Factory`
+- **Interface-segregated repositories**: Each repository is an interface with a single `*Impl` class
+- **Entity → Display pipeline**: Room entities mapped to pure-Kotlin display models before reaching Compose UI (`Mappers.kt`)
 - **StateFlow**: All data flows are `StateFlow` collected as Compose state
 - **Navigation**: `NavHost` with 3 bottom-bar destinations (Expenses, Reports, Export) + 3 overlay screens (add/edit expense, settings)
 - **Min SDK**: 26 (Android 8), **Target SDK**: 34
@@ -91,6 +103,9 @@ scripts/
 - CSV export uses `ActivityResultContracts.CreateDocument` (no storage permissions needed)
 - Default categories seeded on first launch via `CategoryRepository.seedDefaultCategories()`
 - Signing credentials loaded from `keystore.properties` (git-ignored); never hardcoded
+
+See [CLAUDE.md](CLAUDE.md) for additional conventions, design system tokens, and known technical debt.
+See [.claude/docs/architectural_patterns.md](.claude/docs/architectural_patterns.md) for 12 extracted patterns.
 
 ## Signing (CI)
 

@@ -13,7 +13,7 @@ A clean, offline Android expense tracker built with Jetpack Compose and Material
 ## Features
 
 - **Date-based tracking** — defaults to today's expenses, date picker to jump to any date
-- **Track expenses** — amount, description, category, date
+- **Track expenses** — amount, description, category, account (Cash, Cheque, Saving, Credit), date
 - **Reports** — donut chart with centre total, per-category progress bars (Compose Canvas, no third-party libs)
 - **Global settings** — manage categories and currency from a unified settings screen (top-right gear icon)
 - **Categories** — 8 defaults seeded on first launch, 12-colour picker, fully customizable
@@ -31,38 +31,33 @@ A clean, offline Android expense tracker built with Jetpack Compose and Material
 | Database | Room (SQLite) |
 | Navigation | Navigation Compose (3 bottom tabs + overlay screens) |
 | DI | Manual (App container) |
+| Architecture | MVVM + Repository (interface/impl + domain models) |
 | Charts | Compose Canvas |
 | Preferences | DataStore |
 | Min SDK | 26 (Android 8.0) |
 
 ## Build
 
-### Android Studio
-
-Open the project, wait for Gradle sync, then **Build > Build APK(s)**.
-
-### Command Line
-
-Requires `keystore.properties` at the repo root (see [CONTRIBUTING.md](CONTRIBUTING.md#6-signing)).
+Open in Android Studio and sync Gradle, or build from command line:
 
 ```powershell
-# Set JAVA_HOME to Android Studio's bundled JDK
 $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 .\gradlew assembleDebug
 ```
 
-APK: `app\build\outputs\apk\debug\Kaasu-debug.apk`
+See [CONTRIBUTING.md](CONTRIBUTING.md) for release builds, signing setup, and CI details.
 
 ## Project Structure
 
 ```
 app/src/main/java/com/example/expense/
-├── ExpenseApp.kt                 # Application class (DI container)
+├── ExpenseApp.kt                 # DI container (lazy singletons)
 ├── MainActivity.kt               # Single Activity
 ├── data/
-│   ├── db/                       # Room DB, DAOs
-│   ├── model/                    # Entities
-│   └── repository/               # Repositories
+│   ├── db/                       # Room DB, DAOs, Migration objects
+│   ├── model/                    # Room entities + pure-Kotlin display models
+│   ├── mapper/                   # Entity ↔ Display extension functions
+│   └── repository/               # Repository interfaces + Impl classes
 ├── ui/
 │   ├── navigation/               # NavGraph + 3-tab bottom bar
 │   ├── theme/                    # Material 3 theme (premium palette)
@@ -70,13 +65,13 @@ app/src/main/java/com/example/expense/
 │   ├── chart/                    # Reports: pie/bar charts
 │   ├── settings/                 # Global settings (categories + currency)
 │   └── export/                   # CSV export
-└── util/                         # Currency/date formatting, CSV writer
-scripts/
-└── hooks/                        # Git hooks (install with scripts/install-hooks.sh)
+└── util/                         # Formatters, CsvExporter, PreferencesManager, AppResult
 ```
+
+See [AGENTS.md](AGENTS.md) for the full annotated tree with every file listed.
 
 ## Download
 
 Get the latest APK from [Releases](https://github.com/vanterx/kaasu/releases).
 
-Current version: **1.4.0**
+Current version: **1.6.0**
