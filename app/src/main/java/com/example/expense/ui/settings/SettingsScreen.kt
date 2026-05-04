@@ -1,5 +1,6 @@
 package com.example.expense.ui.settings
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -94,19 +95,19 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             // Currency section
             Text(
                 "CURRENCY",
                 style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.5.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 8.dp)
+                modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
             )
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -128,7 +129,6 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 20.dp),
                 color = MaterialTheme.colorScheme.outlineVariant
             )
             Spacer(modifier = Modifier.height(16.dp))
@@ -138,19 +138,17 @@ fun SettingsScreen(
                 "CATEGORIES",
                 style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.5.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 20.dp, bottom = 8.dp)
+                modifier = Modifier.padding(bottom = 8.dp)
             )
 
             CategoryListContent(
                 categories = categories,
                 onEdit = { editingCategory = it },
                 onDelete = { deleteConfirmCategory = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = false)
+                modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(80.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 
