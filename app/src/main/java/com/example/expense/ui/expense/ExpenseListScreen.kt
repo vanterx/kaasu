@@ -1,6 +1,8 @@
 package com.example.expense.ui.expense
 
 import android.app.DatePickerDialog
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -25,16 +28,17 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,15 +47,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.expense.data.model.Expense
 import com.example.expense.data.model.ExpenseWithCategory
-import com.example.expense.ui.theme.ExpenseRed
 import com.example.expense.util.formatCurrency
-import com.example.expense.util.formatDate
 import com.example.expense.util.formatDateShort
 import com.example.expense.util.formatMonthYear
 import com.example.expense.util.isToday
@@ -101,12 +105,16 @@ fun ExpenseListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent
+                ),
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Expenses", style = MaterialTheme.typography.titleMedium)
                         Text(
                             formatMonthYear(month, year),
-                            style = MaterialTheme.typography.bodySmall
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
@@ -139,7 +147,11 @@ fun ExpenseListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddExpense) {
+            FloatingActionButton(
+                onClick = onAddExpense,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
                 Icon(Icons.Default.Add, "Add expense")
             }
         }
@@ -153,7 +165,7 @@ fun ExpenseListScreen(
             MonthlySummaryHeader(
                 total = displayTotal,
                 currencyCode = currencyCode,
-                label = if (selectedDay != null) "Day Total" else "Monthly Total"
+                label = if (selectedDay != null) "DAY TOTAL" else "MONTHLY TOTAL"
             )
 
             if (dailyGroups.isEmpty()) {
@@ -224,30 +236,26 @@ private fun MonthlySummaryHeader(
     currencyCode: String,
     label: String
 ) {
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp, 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = ExpenseRed.copy(alpha = 0.1f)
-        )
+            .padding(horizontal = 24.dp, vertical = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                formatCurrency(total, currencyCode),
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = ExpenseRed
-            )
-        }
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.5.sp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            formatCurrency(total, currencyCode),
+            style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
@@ -267,32 +275,32 @@ private fun DayHeader(
                 if (isToday(dayMillis)) {
                     Text(
                         "Today",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        " • ${formatDateShort(dayMillis)}",
+                        " · ${formatDateShort(dayMillis)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
                     Text(
                         formatDateShort(dayMillis),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
             Text(
                 formatCurrency(total, currencyCode),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = ExpenseRed
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary
             )
         }
-        Spacer(modifier = Modifier.height(4.dp))
-        HorizontalDivider()
+        Spacer(modifier = Modifier.height(6.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Spacer(modifier = Modifier.height(4.dp))
     }
 }
@@ -309,12 +317,16 @@ private fun ExpenseCard(
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -324,19 +336,34 @@ private fun ExpenseCard(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium
                 )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    item.category?.name ?: "Uncategorized",
+                Spacer(modifier = Modifier.height(4.dp))
+                item.category?.let { cat ->
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                MaterialTheme.colorScheme.surfaceContainerHigh,
+                                RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            cat.name,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } ?: Text(
+                    "Uncategorized",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Text(
                 formatCurrency(item.expense.amount, currencyCode),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = ExpenseRed
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
             IconButton(onClick = onDelete) {
                 Icon(
