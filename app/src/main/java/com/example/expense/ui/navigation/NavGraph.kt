@@ -2,17 +2,22 @@ package com.example.expense.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -29,9 +34,12 @@ import com.example.expense.ui.category.CategoryViewModel
 import com.example.expense.ui.chart.ChartScreen
 import com.example.expense.ui.chart.ChartViewModel
 import com.example.expense.ui.expense.AddEditExpenseScreen
+import com.example.expense.ui.expense.CurrencyPickerDialog
 import com.example.expense.ui.expense.ExpenseListScreen
 import com.example.expense.ui.expense.ExpenseViewModel
 import com.example.expense.ui.export.ExportScreen
+import com.example.expense.util.PreferencesManager
+import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     data object Expenses : Screen("expenses", "Expenses", Icons.AutoMirrored.Filled.ListAlt)
@@ -50,9 +58,13 @@ private val bottomNavScreens = listOf(
 @Composable
 fun ExpenseNavGraph(
     expenseRepository: ExpenseRepository,
-    categoryRepository: CategoryRepository
+    categoryRepository: CategoryRepository,
+    preferencesManager: PreferencesManager
 ) {
     val navController = rememberNavController()
+    val scope = rememberCoroutineScope()
+    val currencyCode by preferencesManager.currencyCode.collectAsState(initial = "NZD")
+    var showCurrencyPicker by remember { mutableStateOf(false) }
 
     val expenseViewModel: ExpenseViewModel = viewModel(
         factory = ExpenseViewModel.Factory(expenseRepository, categoryRepository)
@@ -68,6 +80,19 @@ fun ExpenseNavGraph(
     val currentDestination = navBackStackEntry?.destination
     val showBottomBar = bottomNavScreens.any { screen ->
         currentDestination?.hierarchy?.any { it.route == screen.route } == true
+    }
+
+    if (showCurrencyPicker) {
+        CurrencyPickerDialog(
+            currentCode = currencyCode,
+            onDismiss = { showCurrencyPicker = false },
+            onSelect = { code ->
+                scope.launch {
+                    preferencesManager.setCurrencyCode(code)
+                }
+                showCurrencyPicker = false
+            }
+        )
     }
 
     Scaffold(
@@ -104,11 +129,13 @@ fun ExpenseNavGraph(
             composable(Screen.Expenses.route) {
                 ExpenseListScreen(
                     viewModel = expenseViewModel,
+                    currencyCode = currencyCode,
                     onAddExpense = { navController.navigate("add_expense") },
                     onEditExpense = { expense ->
                         expenseViewModel.setEditingExpense(expense)
                         navController.navigate("edit_expense")
-                    }
+                    },
+                    onOpenCurrencyPicker = { showCurrencyPicker = true }
                 )
             }
 
@@ -133,7 +160,10 @@ fun ExpenseNavGraph(
             }
 
             composable(Screen.Charts.route) {
-                ChartScreen(viewModel = chartViewModel)
+                ChartScreen(
+                    viewModel = chartViewModel,
+                    currencyCode = currencyCode
+                )
             }
 
             composable(Screen.Categories.route) {
