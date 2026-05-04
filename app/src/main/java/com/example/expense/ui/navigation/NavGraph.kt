@@ -142,6 +142,7 @@ fun ExpenseNavGraph(
             composable("add_expense") {
                 AddEditExpenseScreen(
                     viewModel = expenseViewModel,
+                    currencyCode = currencyCode,
                     onNavigateBack = {
                         expenseViewModel.setEditingExpense(null)
                         navController.popBackStack()
@@ -152,6 +153,7 @@ fun ExpenseNavGraph(
             composable("edit_expense") {
                 AddEditExpenseScreen(
                     viewModel = expenseViewModel,
+                    currencyCode = currencyCode,
                     onNavigateBack = {
                         expenseViewModel.setEditingExpense(null)
                         navController.popBackStack()

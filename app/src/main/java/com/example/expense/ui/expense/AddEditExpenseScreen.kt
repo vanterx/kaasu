@@ -51,6 +51,7 @@ import java.util.Calendar
 @Composable
 fun AddEditExpenseScreen(
     viewModel: ExpenseViewModel,
+    currencyCode: String,
     onNavigateBack: () -> Unit
 ) {
     val existingExpense = remember { viewModel.getEditingExpense() }
@@ -102,7 +103,7 @@ fun AddEditExpenseScreen(
                 },
                 label = { Text("Amount") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                prefix = { Text("$") },
+                prefix = { Text(currencyCode) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )

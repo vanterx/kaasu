@@ -22,10 +22,12 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,7 +43,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -73,6 +74,7 @@ fun ExpenseListScreen(
     val selectedDay by viewModel.selectedDay.collectAsState()
     val context = LocalContext.current
     var showDatePicker by remember { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf<Expense?>(null) }
 
     if (showDatePicker) {
         val cal = Calendar.getInstance().apply {
@@ -184,7 +186,7 @@ fun ExpenseListScreen(
                                 item = item,
                                 currencyCode = currencyCode,
                                 onClick = { onEditExpense(item.expense) },
-                                onDelete = { viewModel.deleteExpense(item.expense) }
+                                onDelete = { pendingDelete = item.expense }
                             )
                         }
                         item(key = "divider_${group.dayStartMillis}") {
@@ -194,6 +196,25 @@ fun ExpenseListScreen(
                 }
             }
         }
+    }
+
+    pendingDelete?.let { expense ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("Delete Expense") },
+            text = { Text("Delete \"${expense.description.ifEmpty { "this expense" }}\"?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteExpense(expense)
+                    pendingDelete = null
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) { Text("Cancel") }
+            }
+        )
     }
 }
 
@@ -321,7 +342,7 @@ private fun ExpenseCard(
                 Icon(
                     Icons.Default.Delete,
                     "Delete",
-                    tint = Color.Gray
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
