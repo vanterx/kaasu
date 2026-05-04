@@ -19,3 +19,8 @@ local.properties
 
 # OS files
 Thumbs.db
+
+# Signing
+*.keystore
+*.jks
+keystore.properties
