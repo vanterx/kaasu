@@ -3,8 +3,10 @@ package com.example.expense.ui.expense
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.expense.data.mapper.toDisplay
 import com.example.expense.data.model.Category
 import com.example.expense.data.model.Expense
+import com.example.expense.data.model.ExpenseDisplay
 import com.example.expense.data.model.ExpenseWithCategory
 import com.example.expense.data.repository.CategoryRepository
 import com.example.expense.data.repository.ExpenseRepository
@@ -19,7 +21,7 @@ import java.util.Calendar
 
 data class DailyGroup(
     val dayStartMillis: Long,
-    val expenses: List<ExpenseWithCategory>,
+    val expenses: List<ExpenseDisplay>,
     val total: Double
 )
 
@@ -77,7 +79,7 @@ class ExpenseViewModel(
             val end = start + 86_400_000L
             val dayExpenses = all.filter { it.expense.dateMillis in start until end }.sortedByDescending { it.expense.dateMillis }
             if (dayExpenses.isEmpty()) emptyList()
-            else listOf(DailyGroup(start, dayExpenses, dayExpenses.sumOf { it.expense.amount }))
+            else listOf(DailyGroup(start, dayExpenses.toDisplay(), dayExpenses.sumOf { it.expense.amount }))
         } else {
             all.groupBy { expense ->
                 val cal = Calendar.getInstance().apply { timeInMillis = expense.expense.dateMillis }
@@ -86,7 +88,7 @@ class ExpenseViewModel(
                     set(Calendar.MILLISECOND, 0)
                 }.timeInMillis
             }.map { (dayStart, list) ->
-                DailyGroup(dayStart, list.sortedByDescending { it.expense.dateMillis }, list.sumOf { it.expense.amount })
+                DailyGroup(dayStart, list.sortedByDescending { it.expense.dateMillis }.toDisplay(), list.sumOf { it.expense.amount })
             }.sortedByDescending { it.dayStartMillis }
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())

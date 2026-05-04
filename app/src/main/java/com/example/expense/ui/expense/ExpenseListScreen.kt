@@ -53,8 +53,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.expense.data.mapper.toEntity
 import com.example.expense.data.model.Expense
-import com.example.expense.data.model.ExpenseWithCategory
+import com.example.expense.data.model.ExpenseDisplay
 import com.example.expense.util.formatCurrency
 import com.example.expense.util.formatDateShort
 import com.example.expense.util.formatDayWithWeekday
@@ -179,12 +180,12 @@ fun ExpenseListScreen(
                                 currencyCode = currencyCode
                             )
                         }
-                        items(group.expenses, key = { it.expense.id }) { item ->
+                        items(group.expenses, key = { it.id }) { item ->
                             ExpenseCard(
                                 item = item,
                                 currencyCode = currencyCode,
-                                onClick = { onEditExpense(item.expense) },
-                                onDelete = { pendingDelete = item.expense }
+                                onClick = { onEditExpense(item.toEntity()) },
+                                onDelete = { pendingDelete = item.toEntity() }
                             )
                         }
                         item(key = "divider_${group.dayStartMillis}") {
@@ -313,7 +314,7 @@ private fun DayHeader(
 
 @Composable
 private fun ExpenseCard(
-    item: ExpenseWithCategory,
+    item: ExpenseDisplay,
     currencyCode: String,
     onClick: () -> Unit,
     onDelete: () -> Unit
@@ -338,13 +339,13 @@ private fun ExpenseCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    item.expense.description.ifEmpty { "No description" },
+                    item.description.ifEmpty { "No description" },
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    item.category?.let { cat ->
+                    item.categoryName?.let { name ->
                         Box(
                             modifier = Modifier
                                 .background(
@@ -354,7 +355,7 @@ private fun ExpenseCard(
                                 .padding(horizontal = 8.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                cat.name,
+                                name,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -364,7 +365,7 @@ private fun ExpenseCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    item.expense.account?.let { account ->
+                    item.account?.let { account ->
                         Box(
                             modifier = Modifier
                                 .background(
@@ -384,7 +385,7 @@ private fun ExpenseCard(
             }
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                formatCurrency(item.expense.amount, currencyCode),
+                formatCurrency(item.amount, currencyCode),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
