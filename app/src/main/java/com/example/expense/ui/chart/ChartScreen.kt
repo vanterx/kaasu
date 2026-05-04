@@ -47,7 +47,7 @@ import com.example.expense.util.formatMonthYear
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChartScreen(viewModel: ChartViewModel) {
+fun ChartScreen(viewModel: ChartViewModel, currencyCode: String) {
     val categoryTotals by viewModel.categoryTotals.collectAsState()
     val total by viewModel.monthlyTotal.collectAsState()
     val monthYear by viewModel.selectedMonth.collectAsState()
@@ -99,7 +99,8 @@ fun ChartScreen(viewModel: ChartViewModel) {
                     title = "Spending by Category",
                     total = total,
                     totals = totalsWithData,
-                    uncategorizedTotal = uncategorizedTotal
+                    uncategorizedTotal = uncategorizedTotal,
+                    currencyCode = currencyCode
                 )
 
                 totalsWithData.forEach { item ->
@@ -107,7 +108,8 @@ fun ChartScreen(viewModel: ChartViewModel) {
                         categoryName = item.name,
                         amount = item.total ?: 0.0,
                         total = total,
-                        color = ChartColors[item.colorIndex % ChartColors.size]
+                        color = ChartColors[item.colorIndex % ChartColors.size],
+                        currencyCode = currencyCode
                     )
                 }
 
@@ -116,7 +118,8 @@ fun ChartScreen(viewModel: ChartViewModel) {
                         categoryName = "Uncategorized",
                         amount = uncategorizedTotal,
                         total = total,
-                        color = Color.Gray
+                        color = Color.Gray,
+                        currencyCode = currencyCode
                     )
                 }
             }
@@ -129,7 +132,8 @@ private fun PieChartCard(
     title: String,
     total: Double,
     totals: List<CategoryTotal>,
-    uncategorizedTotal: Double
+    uncategorizedTotal: Double,
+    currencyCode: String
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -145,7 +149,7 @@ private fun PieChartCard(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                formatCurrency(total),
+                formatCurrency(total, currencyCode),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -166,7 +170,8 @@ private fun PieChartCard(
                     name = item.name,
                     amount = item.total ?: 0.0,
                     total = total,
-                    color = ChartColors[item.colorIndex % ChartColors.size]
+                    color = ChartColors[item.colorIndex % ChartColors.size],
+                    currencyCode = currencyCode
                 )
             }
 
@@ -175,7 +180,8 @@ private fun PieChartCard(
                     name = "Uncategorized",
                     amount = uncategorizedTotal,
                     total = total,
-                    color = Color.Gray
+                    color = Color.Gray,
+                    currencyCode = currencyCode
                 )
             }
         }
@@ -228,7 +234,8 @@ private fun LegendRow(
     name: String,
     amount: Double,
     total: Double,
-    color: Color
+    color: Color,
+    currencyCode: String
 ) {
     val percentage = if (total > 0) (amount / total * 100) else 0.0
     Row(
@@ -249,7 +256,7 @@ private fun LegendRow(
             modifier = Modifier.weight(1f)
         )
         Text(
-            formatCurrency(amount),
+            formatCurrency(amount, currencyCode),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium
         )
@@ -266,7 +273,8 @@ private fun BarChartCard(
     categoryName: String,
     amount: Double,
     total: Double,
-    color: Color
+    color: Color,
+    currencyCode: String
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -281,7 +289,7 @@ private fun BarChartCard(
             ) {
                 Text(categoryName, style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    formatCurrency(amount),
+                    formatCurrency(amount, currencyCode),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )

@@ -16,7 +16,8 @@ class MainActivity : ComponentActivity() {
             ExpenseTrackerTheme {
                 ExpenseNavGraph(
                     expenseRepository = app.expenseRepository,
-                    categoryRepository = app.categoryRepository
+                    categoryRepository = app.categoryRepository,
+                    preferencesManager = app.preferencesManager
                 )
             }
         }
