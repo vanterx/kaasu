@@ -14,7 +14,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 RESET='\033[0m'
 
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 FAILED=0
 
 # ── Check 1: versionName in build.gradle.kts matches README.md ─────────────────
@@ -44,7 +44,8 @@ done | sort -u)
 MISSING_DIRS=""
 while IFS= read -r dir; do
   [ -z "$dir" ] && continue
-  if ! grep -q "$dir" "$ROOT/AGENTS.md"; then
+  leaf="$(basename "$dir")/"
+  if ! grep -q "$leaf" "$ROOT/AGENTS.md"; then
     MISSING_DIRS="$MISSING_DIRS  $dir\n"
   fi
 done <<< "$SRC_DIRS"
