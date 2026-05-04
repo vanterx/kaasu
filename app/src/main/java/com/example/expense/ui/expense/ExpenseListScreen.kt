@@ -343,26 +343,44 @@ private fun ExpenseCard(
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                item.category?.let { cat ->
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                MaterialTheme.colorScheme.surfaceContainerHigh,
-                                RoundedCornerShape(4.dp)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    item.category?.let { cat ->
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    RoundedCornerShape(4.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                cat.name,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            cat.name,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        }
+                    } ?: Text(
+                        "Uncategorized",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    item.expense.account?.let { account ->
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    RoundedCornerShape(4.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                account,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                } ?: Text(
-                    "Uncategorized",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                }
             }
             Spacer(modifier = Modifier.width(12.dp))
             Text(

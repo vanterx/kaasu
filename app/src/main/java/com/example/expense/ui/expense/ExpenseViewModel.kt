@@ -154,6 +154,7 @@ class ExpenseViewModel(
         description: String,
         categoryId: Long?,
         dateMillis: Long,
+        account: String? = null,
         existingExpense: Expense? = null
     ) {
         viewModelScope.launch {
@@ -163,7 +164,8 @@ class ExpenseViewModel(
                         amount = amount,
                         description = description,
                         categoryId = categoryId,
-                        dateMillis = dateMillis
+                        dateMillis = dateMillis,
+                        account = account
                     )
                 )
             } else {
@@ -172,7 +174,8 @@ class ExpenseViewModel(
                         amount = amount,
                         description = description,
                         categoryId = categoryId,
-                        dateMillis = dateMillis
+                        dateMillis = dateMillis,
+                        account = account
                     )
                 )
             }

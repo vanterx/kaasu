@@ -67,8 +67,10 @@ fun AddEditExpenseScreen(
     var amountText by remember { mutableStateOf(existingExpense?.let { it.amount.toString() } ?: "") }
     var description by remember { mutableStateOf(existingExpense?.description ?: "") }
     var selectedCategory by remember { mutableStateOf(existingExpense?.categoryId) }
+    var selectedAccount by remember { mutableStateOf(existingExpense?.account) }
     var dateMillis by remember { mutableLongStateOf(existingExpense?.dateMillis ?: System.currentTimeMillis()) }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
+    var accountDropdownExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         val editing = viewModel.getEditingExpense()
@@ -76,6 +78,7 @@ fun AddEditExpenseScreen(
         amount = editing?.amount ?: 0.0
         description = editing?.description ?: ""
         selectedCategory = editing?.categoryId
+        selectedAccount = editing?.account
         dateMillis = editing?.dateMillis ?: System.currentTimeMillis()
     }
 
@@ -89,7 +92,7 @@ fun AddEditExpenseScreen(
                     }
                 }
             )
-        }
+        },
     ) { padding ->
         Column(
             modifier = Modifier
@@ -138,6 +141,18 @@ fun AddEditExpenseScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            AccountDropdown(
+                selectedAccount = selectedAccount,
+                expanded = accountDropdownExpanded,
+                onExpandedChange = { accountDropdownExpanded = it },
+                onAccountSelected = {
+                    selectedAccount = it
+                    accountDropdownExpanded = false
+                }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             DatePickerField(
                 dateMillis = dateMillis,
                 onDateSelected = { dateMillis = it },
@@ -154,6 +169,7 @@ fun AddEditExpenseScreen(
                             description = description.trim(),
                             categoryId = selectedCategory,
                             dateMillis = dateMillis,
+                            account = selectedAccount,
                             existingExpense = existingExpense
                         )
                         onNavigateBack()
@@ -203,6 +219,47 @@ private fun CategoryDropdown(
                 DropdownMenuItem(
                     text = { Text(category.name) },
                     onClick = { onCategorySelected(category) }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AccountDropdown(
+    selectedAccount: String?,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onAccountSelected: (String?) -> Unit
+) {
+    val accounts = listOf("Cash", "Cheque", "Saving", "Credit")
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = onExpandedChange
+    ) {
+        OutlinedTextField(
+            value = selectedAccount ?: "None",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Account") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor()
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) }
+        ) {
+            DropdownMenuItem(
+                text = { Text("None") },
+                onClick = { onAccountSelected(null) }
+            )
+            accounts.forEach { account ->
+                DropdownMenuItem(
+                    text = { Text(account) },
+                    onClick = { onAccountSelected(account) }
                 )
             }
         }
