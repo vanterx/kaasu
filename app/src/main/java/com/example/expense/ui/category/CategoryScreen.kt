@@ -20,26 +20,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -55,129 +47,55 @@ import androidx.compose.ui.unit.sp
 import com.example.expense.data.model.Category
 import com.example.expense.ui.theme.ChartColors
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategoryScreen(viewModel: CategoryViewModel) {
-    val categories by viewModel.categories.collectAsState()
-    var showAddDialog by remember { mutableStateOf(false) }
-    var editingCategory by remember { mutableStateOf<Category?>(null) }
-    var deleteConfirmCategory by remember { mutableStateOf<Category?>(null) }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Categories", style = MaterialTheme.typography.titleMedium)
-                        if (categories.isNotEmpty()) {
-                            Text(
-                                "${categories.size} ${if (categories.size == 1) "category" else "categories"}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(Icons.Default.Add, "Add category")
+fun CategoryListContent(
+    categories: List<Category>,
+    onEdit: (Category) -> Unit,
+    onDelete: (Category) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (categories.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "No categories yet",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Tap + to create your first category",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
             }
         }
-    ) { padding ->
-        if (categories.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        "No categories yet",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "Tap + to create your first category",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                }
+    } else {
+        LazyColumn(
+            modifier = modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
+        ) {
+            item {
+                Text(
+                    "ALL CATEGORIES",
+                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.5.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
-            ) {
-                item {
-                    Text(
-                        "ALL CATEGORIES",
-                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.5.sp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-                }
-                items(categories, key = { it.id }) { category ->
-                    CategoryCard(
-                        category = category,
-                        onEdit = { editingCategory = category },
-                        onDelete = { deleteConfirmCategory = category }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
+            items(categories, key = { it.id }) { category ->
+                CategoryCard(
+                    category = category,
+                    onEdit = { onEdit(category) },
+                    onDelete = { onDelete(category) }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
-    }
-
-    if (showAddDialog || editingCategory != null) {
-        CategoryDialog(
-            existingCategory = editingCategory,
-            onDismiss = {
-                showAddDialog = false
-                editingCategory = null
-            },
-            onSave = { name, colorIndex ->
-                if (editingCategory != null) {
-                    viewModel.updateCategory(editingCategory!!.copy(name = name, colorIndex = colorIndex))
-                } else {
-                    viewModel.addCategory(name, colorIndex)
-                }
-                showAddDialog = false
-                editingCategory = null
-            }
-        )
-    }
-
-    deleteConfirmCategory?.let { category ->
-        AlertDialog(
-            onDismissRequest = { deleteConfirmCategory = null },
-            title = { Text("Delete Category") },
-            text = { Text("Delete \"${category.name}\"?\nExpenses in this category will become uncategorized.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.deleteCategory(category)
-                    deleteConfirmCategory = null
-                }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { deleteConfirmCategory = null }) {
-                    Text("Cancel")
-                }
-            }
-        )
     }
 }
 
@@ -234,7 +152,7 @@ private fun CategoryCard(
 }
 
 @Composable
-private fun CategoryDialog(
+fun CategoryDialog(
     existingCategory: Category?,
     onDismiss: () -> Unit,
     onSave: (String, Int) -> Unit

@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -14,10 +13,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -29,29 +24,25 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.expense.data.repository.CategoryRepository
 import com.example.expense.data.repository.ExpenseRepository
-import com.example.expense.ui.category.CategoryScreen
 import com.example.expense.ui.category.CategoryViewModel
 import com.example.expense.ui.chart.ChartScreen
 import com.example.expense.ui.chart.ChartViewModel
 import com.example.expense.ui.expense.AddEditExpenseScreen
-import com.example.expense.ui.expense.CurrencyPickerDialog
 import com.example.expense.ui.expense.ExpenseListScreen
 import com.example.expense.ui.expense.ExpenseViewModel
 import com.example.expense.ui.export.ExportScreen
+import com.example.expense.ui.settings.SettingsScreen
 import com.example.expense.util.PreferencesManager
-import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     data object Expenses : Screen("expenses", "Expenses", Icons.AutoMirrored.Filled.ListAlt)
     data object Charts : Screen("charts", "Reports", Icons.Default.BarChart)
-    data object Categories : Screen("categories", "Categories", Icons.Default.Category)
     data object Export : Screen("export", "Export", Icons.Default.FileDownload)
 }
 
 private val bottomNavScreens = listOf(
     Screen.Expenses,
     Screen.Charts,
-    Screen.Categories,
     Screen.Export
 )
 
@@ -62,9 +53,7 @@ fun ExpenseNavGraph(
     preferencesManager: PreferencesManager
 ) {
     val navController = rememberNavController()
-    val scope = rememberCoroutineScope()
     val currencyCode by preferencesManager.currencyCode.collectAsState(initial = "NZD")
-    var showCurrencyPicker by remember { mutableStateOf(false) }
 
     val expenseViewModel: ExpenseViewModel = viewModel(
         factory = ExpenseViewModel.Factory(expenseRepository, categoryRepository)
@@ -80,19 +69,6 @@ fun ExpenseNavGraph(
     val currentDestination = navBackStackEntry?.destination
     val showBottomBar = bottomNavScreens.any { screen ->
         currentDestination?.hierarchy?.any { it.route == screen.route } == true
-    }
-
-    if (showCurrencyPicker) {
-        CurrencyPickerDialog(
-            currentCode = currencyCode,
-            onDismiss = { showCurrencyPicker = false },
-            onSelect = { code ->
-                scope.launch {
-                    preferencesManager.setCurrencyCode(code)
-                }
-                showCurrencyPicker = false
-            }
-        )
     }
 
     Scaffold(
@@ -135,7 +111,7 @@ fun ExpenseNavGraph(
                         expenseViewModel.setEditingExpense(expense)
                         navController.navigate("edit_expense")
                     },
-                    onOpenCurrencyPicker = { showCurrencyPicker = true }
+                    onOpenSettings = { navController.navigate("settings") }
                 )
             }
 
@@ -168,8 +144,13 @@ fun ExpenseNavGraph(
                 )
             }
 
-            composable(Screen.Categories.route) {
-                CategoryScreen(viewModel = categoryViewModel)
+            composable("settings") {
+                SettingsScreen(
+                    categoryViewModel = categoryViewModel,
+                    preferencesManager = preferencesManager,
+                    currencyCode = currencyCode,
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
 
             composable(Screen.Export.route) {

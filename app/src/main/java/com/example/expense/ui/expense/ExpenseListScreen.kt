@@ -58,7 +58,6 @@ import com.example.expense.data.model.ExpenseWithCategory
 import com.example.expense.util.formatCurrency
 import com.example.expense.util.formatDateShort
 import com.example.expense.util.formatDayWithWeekday
-import com.example.expense.util.formatMonthYear
 import com.example.expense.util.isToday
 import java.util.Calendar
 
@@ -69,13 +68,10 @@ fun ExpenseListScreen(
     currencyCode: String,
     onAddExpense: () -> Unit,
     onEditExpense: (Expense) -> Unit,
-    onOpenCurrencyPicker: () -> Unit
+    onOpenSettings: () -> Unit
 ) {
     val dailyGroups by viewModel.dailyGroups.collectAsState()
-    val monthlyTotal by viewModel.monthlyTotal.collectAsState()
     val dayTotal by viewModel.dayTotal.collectAsState()
-    val monthYear by viewModel.selectedMonth.collectAsState()
-    val (month, year) = monthYear
     val selectedDay by viewModel.selectedDay.collectAsState()
     val context = LocalContext.current
     var showDatePicker by remember { mutableStateOf(false) }
@@ -110,39 +106,26 @@ fun ExpenseListScreen(
                     containerColor = Color.Transparent
                 ),
                 title = {
+                    val displayDay = selectedDay ?: System.currentTimeMillis()
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Expenses", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            formatMonthYear(month, year),
+                            formatDayWithWeekday(displayDay),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.previousMonth() }) {
-                        Icon(Icons.Default.ChevronLeft, "Previous month")
-                    }
-                },
                 actions = {
-                    if (selectedDay != null) {
-                        IconButton(onClick = { viewModel.clearDay() }) {
-                            Text("Clear", style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
                     IconButton(onClick = { showDatePicker = true }) {
                         Icon(
                             Icons.Default.DateRange,
                             "Pick date",
-                            tint = if (selectedDay != null) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                    IconButton(onClick = onOpenCurrencyPicker) {
+                    IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Default.Settings, "Settings")
-                    }
-                    IconButton(onClick = { viewModel.nextMonth() }) {
-                        Icon(Icons.Default.ChevronRight, "Next month")
                     }
                 }
             )
@@ -162,23 +145,15 @@ fun ExpenseListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            val currentDay = selectedDay
-            val displayTotal = if (currentDay != null) (dayTotal ?: 0.0) else monthlyTotal
-            if (currentDay != null) {
-                DayNavigationHeader(
-                    selectedDay = currentDay,
-                    total = displayTotal,
-                    currencyCode = currencyCode,
-                    onPreviousDay = { viewModel.selectDay(currentDay - 86_400_000L) },
-                    onNextDay = { viewModel.selectDay(currentDay + 86_400_000L) }
-                )
-            } else {
-                MonthlySummaryHeader(
-                    total = displayTotal,
-                    currencyCode = currencyCode,
-                    label = "MONTHLY TOTAL"
-                )
-            }
+            val currentDay = selectedDay ?: System.currentTimeMillis()
+            val displayTotal = dayTotal ?: 0.0
+            DayNavigationHeader(
+                selectedDay = currentDay,
+                total = displayTotal,
+                currencyCode = currencyCode,
+                onPreviousDay = { viewModel.selectDay(currentDay - 86_400_000L) },
+                onNextDay = { viewModel.selectDay(currentDay + 86_400_000L) }
+            )
 
             if (dailyGroups.isEmpty()) {
                 Box(
@@ -186,8 +161,7 @@ fun ExpenseListScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        if (selectedDay != null) "No expenses on this day."
-                        else "No expenses this month.\nTap + to add one.",
+                        "No expenses on this day.",
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -287,35 +261,6 @@ private fun DayNavigationHeader(
                 Icon(Icons.Default.ChevronRight, "Next day")
             }
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-    }
-}
-
-@Composable
-private fun MonthlySummaryHeader(
-    total: Double,
-    currencyCode: String,
-    label: String
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.5.sp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            formatCurrency(total, currencyCode),
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(20.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }

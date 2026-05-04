@@ -32,7 +32,14 @@ class ExpenseViewModel(
         it.get(Calendar.MONTH) to it.get(Calendar.YEAR)
     })
 
-    private val _selectedDay = MutableStateFlow<Long?>(null)
+    private val _selectedDay = MutableStateFlow<Long?>(Calendar.getInstance().let {
+        val c = Calendar.getInstance()
+        c.set(Calendar.HOUR_OF_DAY, 0)
+        c.set(Calendar.MINUTE, 0)
+        c.set(Calendar.SECOND, 0)
+        c.set(Calendar.MILLISECOND, 0)
+        c.timeInMillis
+    })
 
     val selectedMonth: StateFlow<Pair<Int, Int>> = _selectedMonth.asStateFlow()
     val selectedDay: StateFlow<Long?> = _selectedDay.asStateFlow()
