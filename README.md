@@ -1,21 +1,23 @@
 # Kaasu — Personal Expense Tracker
 
-A simple, offline Android expense tracker built with Jetpack Compose and Material 3.
+A clean, offline Android expense tracker built with Jetpack Compose and Material 3. Premium light luxury design with warm cream surfaces and gold accents.
 
 ## Screenshots
 
 | Expenses | Charts | Categories | Export |
 |----------|--------|------------|--------|
-| Monthly list with add/edit/delete | Donut chart + bar breakdowns | Add/edit/delete categories | Export all to CSV |
+| Monthly list with hero total, add/edit/delete | Donut chart with centre total + bar breakdowns | Colour-coded categories | CSV export |
 
 ## Features
 
 - **Track expenses** — amount, description, category, date
-- **Monthly view** — navigate months, see totals
-- **Charts** — donut chart by category + progress bars (Compose Canvas, no third-party libs)
-- **Categories** — 8 defaults seeded on first launch, fully customizable
-- **CSV Export** — export all expenses via Android SAF file picker
+- **Monthly view** — navigate months, hero-sized total, day filter
+- **Charts** — donut chart with centre total, per-category progress bars (Compose Canvas, no third-party libs)
+- **Categories** — 8 defaults seeded on first launch, 12-colour picker, fully customizable
+- **CSV Export** — export all expenses via Android SAF file picker (no storage permission)
+- **Multi-currency** — 10 currencies, NZD default, persisted with DataStore
 - **Fully offline** — Room/SQLite local storage, no internet needed
+- **Premium design** — warm cream palette, gold accent, K monogram launcher icon
 
 ## Tech Stack
 
@@ -27,6 +29,7 @@ A simple, offline Android expense tracker built with Jetpack Compose and Materia
 | Navigation | Navigation Compose |
 | DI | Manual (App container) |
 | Charts | Compose Canvas |
+| Preferences | DataStore |
 | Min SDK | 26 (Android 8.0) |
 
 ## Build
@@ -37,6 +40,8 @@ Open the project, wait for Gradle sync, then **Build > Build APK(s)**.
 
 ### Command Line
 
+Requires `keystore.properties` at the repo root (see [CONTRIBUTING.md](CONTRIBUTING.md#6-signing)).
+
 ```powershell
 # Set JAVA_HOME to Android Studio's bundled JDK
 $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
@@ -44,8 +49,6 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 ```
 
 APK: `app\build\outputs\apk\debug\Kaasu-debug.apk`
-
-Or use Android Studio's built-in Terminal tab — it sets JAVA_HOME automatically.
 
 ## Project Structure
 
@@ -59,14 +62,18 @@ app/src/main/java/com/example/expense/
 │   └── repository/               # Repositories
 ├── ui/
 │   ├── navigation/               # NavGraph + bottom bar
-│   ├── theme/                    # Material 3 theme
+│   ├── theme/                    # Material 3 theme (premium palette)
 │   ├── expense/                  # List + add/edit
 │   ├── category/                 # Category management
 │   ├── chart/                    # Pie/bar charts
 │   └── export/                   # CSV export
 └── util/                         # Currency/date formatting, CSV writer
+scripts/
+└── hooks/                        # Git hooks (install with scripts/install-hooks.sh)
 ```
 
 ## Download
 
 Get the latest APK from [Releases](https://github.com/vanterx/kaasu/releases).
+
+Current version: **1.2.0**
