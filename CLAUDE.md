@@ -1,57 +1,97 @@
 # CLAUDE.md — Kaasu Expense Tracker
 
-Kaasu is an offline-first Android expense tracker built with Kotlin, Jetpack Compose, Room, and Material 3. Premium light luxury design — warm cream surfaces, gold accent, K monogram launcher icon.
+## Overview
 
-See [AGENTS.md](AGENTS.md) for build commands, project structure, and architecture overview.
-See [CONTRIBUTING.md](CONTRIBUTING.md) for branching, PR, CI, release, and signing workflows.
+Kaasu is an offline-first Android expense tracker (Kotlin + Jetpack Compose + Room).
+Fully offline, SQLite local storage, premium cream-and-gold Material 3 design.
+Tamil for "money, cash, coin" — origin of the English word "cash".
 
-## Conventions Claude Must Follow
+## Tech Stack
 
-- **No Hilt/Dagger** — manual DI via `ExpenseApp`. Pass new dependencies through the existing factory pattern.
-- **No third-party chart libraries** — charts are drawn with Compose `Canvas` in `ui/chart/`.
-- **No LiveData** — use `StateFlow`/`Flow` exclusively. Prefer `SharingStarted.WhileSubscribed(5_000)` over `SharingStarted.Lazily` for screen-bound StateFlows.
-- **No storage permissions** — file operations go through `ActivityResultContracts` (SAF).
-- **No dynamic color** — `dynamicColor` is disabled by design; the premium palette must always apply. Do not re-enable it.
-- **Kotlin-first** — avoid `java.util.Calendar`; prefer `java.time.*` (API 26+). Never use `!!`.
-- **Immutable state** — use `data class.copy()` for state updates, never mutate in place.
-- **No hardcoded signing credentials** — load from `keystore.properties` (see CONTRIBUTING.md).
-- **Theme-aware colors only** — use `MaterialTheme.colorScheme.*` tokens, never hardcode `Color.Red`, `Color.Gray`, `Color.Black`.
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| UI | Jetpack Compose + Material 3 | BOM 2024.05.00 |
+| Architecture | MVVM + Repository + Manual DI | — |
+| Database | Room (SQLite) | 2.6.1 |
+| Navigation | Navigation Compose | 2.7.7 |
+| State | StateFlow exclusively | — |
+| Charts | Compose Canvas (no third-party) | — |
+| Preferences | DataStore | 1.1.1 |
+| Build | AGP + Kotlin + KSP | 8.4.0 / 1.9.24 / 1.9.24-1.0.20 |
+| Min SDK / Target | 26 (Android 8.0) / 34 | — |
 
-## Design System
+## Key Directories
 
-The app uses a custom premium palette — do not revert to the default M3 purple/pink template:
-
-| Token | Light | Dark | Role |
-|---|---|---|---|
-| `primary` | `#B8965A` | `#D4A96A` | Gold — amounts, accent, FAB |
-| `surface` | `#FAF8F4` | `#1C1A17` | Page background |
-| `surfaceContainer` | `#F2EDE4` | `#252220` | Card fill |
-| `onSurface` | `#1C1A17` | `#E8E0D4` | Primary text |
-| `onSurfaceVariant` | `#6B6560` | `#B5ADA5` | Labels, secondary text |
-| `outline` | `#C8BFB4` | `#7A736C` | Card borders |
-| `error` | `#C0392B` | `#E57373` | Delete, errors |
-
-Cards use `border = BorderStroke(1.dp, colorScheme.outlineVariant)` with zero elevation — not shadow-based elevation.
-
-## Testing
-
-Test directories (`src/test/`, `src/androidTest/`) are empty. For any new ViewModel or Repository code, write JUnit 4 + MockK unit tests. Use `kotlinx-coroutines-test` (`runTest`) for coroutine flows.
-
-```kotlin
-@Test
-fun `saving expense updates list`() = runTest {
-    val repo = mockk<ExpenseRepository>(relaxed = true)
-    val vm = ExpenseViewModel(repo, mockk(relaxed = true))
-    vm.saveExpense(10.0, "Coffee", null, System.currentTimeMillis())
-    coVerify { repo.saveExpense(any()) }
-}
+```
+app/src/main/java/com/example/expense/
+├── ExpenseApp.kt                    # DI container (lazy singletons)
+├── MainActivity.kt                  # Single Activity, edge-to-edge
+├── data/
+│   ├── db/                          # Room DB, DAOs, Migration objects
+│   ├── model/                       # Room entities + pure-Kotlin display models
+│   ├── mapper/                      # Entity ↔ Display extension functions
+│   └── repository/                  # Interfaces + Impl classes wrapping DAOs
+├── ui/
+│   ├── navigation/NavGraph.kt       # Routes, 3-tab bottom bar, ViewModel wiring
+│   ├── theme/                       # Custom premium palette (Color.kt, Theme.kt)
+│   ├── expense/                     # Day-based list, add/edit form, ViewModel, CurrencyPicker
+│   ├── category/                    # CategoryListContent + CategoryDialog composables
+│   ├── chart/                       # Reports: Canvas-drawn donut + bar charts
+│   ├── settings/                    # Global settings (currency + categories)
+│   └── export/                      # CSV export via SAF
+└── util/                            # Formatters, CsvExporter, PreferencesManager, AppResult
 ```
 
-## Known Technical Debt
+## Build & Verify
 
-- `dateMillis` has no database index — month-range queries do full scans. Add `@Index(value = ["dateMillis"])` to the `Expense` entity if performance degrades.
-- Day-boundary midnight calculation is duplicated in `ExpenseViewModel` — extract to `Formatters.kt` when touching that file.
-- Release build has `isMinifyEnabled = false` — enable R8 shrinking before a Play Store release.
-- `android.app.DatePickerDialog` (legacy View) used instead of M3 `DatePicker` composable in expense screens.
-- `"add_expense"`, `"edit_expense"`, and `"settings"` navigation routes are string literals — should be sealed `Screen` objects for consistency.
-- No unit tests exist for any ViewModel or Repository.
+| Command | Description |
+|---------|-------------|
+| `$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"; .\gradlew assembleDebug` | Build debug APK |
+| `.\gradlew assembleRelease` | Build release APK (needs keystore.properties) |
+| `.\gradlew test` | Run unit tests |
+| `.\gradlew lint` | Run lint |
+| `bash scripts/install-hooks.sh` | One-time git hook setup (release tagging reminder) |
+
+APK: `app/build/outputs/apk/debug/Kaasu-debug.apk`
+
+## Core Conventions
+
+- **Manual DI only** — `ExpenseApp.kt:17-20` holds singletons, passed via `ViewModelProvider.Factory`
+- **StateFlow, no LiveData** — all reactive state uses `StateFlow` + `stateIn(viewModelScope, ...)`
+- **Interface-segregated repositories** — `ExpenseRepository.kt` (interface) → `ExpenseRepositoryImpl.kt`
+- **Display models for UI** — Room entities never reach composables; mapped via `Mappers.kt:8-34`
+- **`data class.copy()` for immutability** — never mutate entity/model properties in place
+- **SAF for file I/O** — no storage permissions; `ActivityResultContracts.CreateDocument` for exports
+- **No dynamic color** — fixed premium palette at `Theme.kt:15-77`, must never be overridden
+- **No third-party chart libraries** — all charts are Compose `Canvas` in `ChartScreen.kt:210-353`
+- **Transparent TopAppBar + zero-elevation cards** — `Color.Transparent` app bars, `BorderStroke(1.dp)` cards
+- **Theme tokens only** — use `MaterialTheme.colorScheme.*`, never hardcode colors
+
+## Additional Documentation
+
+Check these files when relevant to the task:
+
+| File | Content | When to consult |
+|------|---------|----------------|
+| `AGENTS.md` | Full project structure, build commands, signing setup | Project setup, CI/CD |
+| `CONTRIBUTING.md` | Branching, PR, release workflow, signing | Git operations, releases |
+| `.claude/docs/architectural_patterns.md` | 12 patterns extracted from codebase | Architecture changes, new features |
+| `README.md` | User-facing features, screenshots | Feature descriptions, download links |
+| `backlog/improvements.md` | Prioritized feature plan (local-only, gitignored) | Planning new features |
+
+## Quick Patterns Reference
+
+See `.claude/docs/architectural_patterns.md` for full details on these repeating patterns:
+
+1. Manual DI via Application class
+2. Interface-segregated repository layer
+3. Room Entity → Display Model → Compose UI
+4. StateFlow-only reactive streams
+5. Day-based expense navigation
+6. Bottom nav + overlay route navigation
+7. Compose Canvas custom charts
+8. SAF for file operations
+9. Category seeding on first launch
+10. Database migration with version numbering
+11. Zero-elevation card design
+12. `data class.copy()` for immutable state
