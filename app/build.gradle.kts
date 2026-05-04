@@ -9,6 +9,15 @@ android {
     compileSdk = 34
     base.archivesName.set("Kaasu")
 
+    signingConfigs {
+        create("shared") {
+            storeFile = file("kaasu.keystore")
+            storePassword = "kaasu123"
+            keyAlias = "kaasu"
+            keyPassword = "kaasu123"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.example.expense"
         minSdk = 26
@@ -23,7 +32,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("shared")
+        }
         release {
+            signingConfig = signingConfigs.getByName("shared")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
