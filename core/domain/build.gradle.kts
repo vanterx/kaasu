@@ -15,4 +15,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 dependencies {
     implementation(project(":core:common"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockk)
 }

@@ -23,53 +23,30 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.expense.core.domain.repository.ExpenseRepository
 import com.example.expense.util.CsvExporter
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExportScreen(expenseRepository: ExpenseRepository) {
+fun ExportScreen(viewModel: ExportViewModel) {
     val context = LocalContext.current
-    var exportResult by remember { mutableStateOf<String?>(null) }
+    val exportResult by viewModel.exportResult.collectAsState()
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv")
     ) { uri: Uri? ->
-        if (uri != null) {
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    val expenses = expenseRepository.getAllExpensesSnapshot()
-                    CsvExporter(context).export(expenses, uri)
-                    withContext(Dispatchers.Main) {
-                        exportResult = "Exported ${expenses.size} expenses successfully!"
-                    }
-                } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
-                        exportResult = "Export failed: ${e.message}"
-                    }
-                }
-            }
-        }
+        if (uri != null) viewModel.export(context, uri)
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("Export Data") })
-        }
+        topBar = { TopAppBar(title = { Text("Export Data") }) }
     ) { padding ->
         Box(
             modifier = Modifier

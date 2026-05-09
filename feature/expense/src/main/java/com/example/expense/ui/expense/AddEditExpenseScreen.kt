@@ -1,6 +1,8 @@
 package com.example.expense.ui.expense
 
-import android.app.DatePickerDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,12 +47,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.expense.core.domain.model.Category
 import com.example.expense.util.formatDate
-import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +61,6 @@ fun AddEditExpenseScreen(
 ) {
     val existingExpense = remember { viewModel.getEditingExpense() }
     val categories by viewModel.categories.collectAsState()
-    val context = LocalContext.current
 
     var amount by remember { mutableDoubleStateOf(existingExpense?.amount ?: 0.0) }
     var amountText by remember { mutableStateOf(existingExpense?.let { it.amount.toString() } ?: "") }
@@ -154,8 +154,7 @@ fun AddEditExpenseScreen(
 
             DatePickerField(
                 dateMillis = dateMillis,
-                onDateSelected = { dateMillis = it },
-                context = context
+                onDateSelected = { dateMillis = it }
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -265,13 +264,29 @@ private fun AccountDropdown(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DatePickerField(
     dateMillis: Long,
-    onDateSelected: (Long) -> Unit,
-    context: android.content.Context
+    onDateSelected: (Long) -> Unit
 ) {
-    val calendar = Calendar.getInstance().apply { timeInMillis = dateMillis }
+    var showPicker by remember { mutableStateOf(false) }
+
+    if (showPicker) {
+        val state = rememberDatePickerState(initialSelectedDateMillis = dateMillis)
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.selectedDateMillis?.let { onDateSelected(it) }
+                    showPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPicker = false }) { Text("Cancel") }
+            }
+        ) { DatePicker(state = state) }
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -297,21 +312,7 @@ private fun DatePickerField(
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .clickable {
-                        DatePickerDialog(
-                            context,
-                            { _, year, month, dayOfMonth ->
-                                Calendar.getInstance().apply {
-                                    set(year, month, dayOfMonth, 0, 0, 0)
-                                    set(Calendar.MILLISECOND, 0)
-                                    onDateSelected(timeInMillis)
-                                }
-                            },
-                            calendar.get(Calendar.YEAR),
-                            calendar.get(Calendar.MONTH),
-                            calendar.get(Calendar.DAY_OF_MONTH)
-                        ).show()
-                    }
+                    .clickable { showPicker = true }
                     .padding(vertical = 8.dp),
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center

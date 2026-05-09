@@ -15,7 +15,7 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index("categoryId")]
+    indices = [Index("categoryId"), Index("dateMillis")]
 )
 data class ExpenseEntity(
     @PrimaryKey(autoGenerate = true)

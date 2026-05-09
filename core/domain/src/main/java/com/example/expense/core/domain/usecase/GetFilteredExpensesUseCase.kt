@@ -4,7 +4,9 @@ import com.example.expense.core.domain.model.ExpenseItem
 import com.example.expense.core.domain.repository.ExpenseRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.util.Calendar
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * Filters, sorts, and groups a month's expenses.
@@ -56,12 +58,9 @@ class GetFilteredExpensesUseCase(private val repository: ExpenseRepository) {
         result
     }
 
-    private fun dayStart(millis: Long): Long = Calendar.getInstance().run {
-        timeInMillis = millis
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-        timeInMillis
-    }
+    private fun dayStart(millis: Long): Long =
+        LocalDate.ofInstant(Instant.ofEpochMilli(millis), ZoneId.systemDefault())
+            .atStartOfDay(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
 }

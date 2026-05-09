@@ -1,6 +1,8 @@
 package com.example.expense.ui.expense
 
-import android.app.DatePickerDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -52,7 +54,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,7 +63,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -76,7 +76,6 @@ import com.example.expense.util.formatDate
 import com.example.expense.util.formatDateShort
 import com.example.expense.util.formatDayWithWeekday
 import com.example.expense.util.isToday
-import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,32 +98,25 @@ fun ExpenseListScreen(
     val dateRangeStart by viewModel.dateRangeStart.collectAsState()
     val dateRangeEnd by viewModel.dateRangeEnd.collectAsState()
     val categories by viewModel.categories.collectAsState()
-    val context = LocalContext.current
     var showDatePicker by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<ExpenseItem?>(null) }
 
-    LaunchedEffect(showDatePicker, isDateRangeMode) {
-        if (showDatePicker && !isDateRangeMode) {
-            val cal = Calendar.getInstance().apply {
-                timeInMillis = selectedDay ?: System.currentTimeMillis()
-            }
-            DatePickerDialog(
-                context,
-                { _, y, m, d ->
-                    Calendar.getInstance().apply {
-                        set(y, m, d, 0, 0, 0)
-                        set(Calendar.MILLISECOND, 0)
-                        viewModel.selectDay(timeInMillis)
-                    }
+    if (showDatePicker && !isDateRangeMode) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDay ?: System.currentTimeMillis()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { viewModel.selectDay(it) }
                     showDatePicker = false
-                },
-                cal.get(Calendar.YEAR),
-                cal.get(Calendar.MONTH),
-                cal.get(Calendar.DAY_OF_MONTH)
-            ).apply {
-                setOnCancelListener { showDatePicker = false }
-            }.show()
-        }
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) { DatePicker(state = datePickerState) }
     }
 
     Scaffold(
@@ -511,6 +503,7 @@ private fun DateRangeHeader(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DatePickerChip(
     label: String,
@@ -518,27 +511,28 @@ private fun DatePickerChip(
     modifier: Modifier = Modifier,
     onDateSelected: (Long) -> Unit
 ) {
-    val context = LocalContext.current
-    val calendar = Calendar.getInstance().apply {
-        timeInMillis = dateMillis ?: System.currentTimeMillis()
+    var showPicker by remember { mutableStateOf(false) }
+
+    if (showPicker) {
+        val state = rememberDatePickerState(
+            initialSelectedDateMillis = dateMillis ?: System.currentTimeMillis()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.selectedDateMillis?.let { onDateSelected(it) }
+                    showPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPicker = false }) { Text("Cancel") }
+            }
+        ) { DatePicker(state = state) }
     }
 
     Card(
-        modifier = modifier.clickable {
-            DatePickerDialog(
-                context,
-                { _, year, month, dayOfMonth ->
-                    Calendar.getInstance().apply {
-                        set(year, month, dayOfMonth, 0, 0, 0)
-                        set(Calendar.MILLISECOND, 0)
-                        onDateSelected(timeInMillis)
-                    }
-                },
-                calendar.get(Calendar.YEAR),
-                calendar.get(Calendar.MONTH),
-                calendar.get(Calendar.DAY_OF_MONTH)
-            ).show()
-        },
+        modifier = modifier.clickable { showPicker = true },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),

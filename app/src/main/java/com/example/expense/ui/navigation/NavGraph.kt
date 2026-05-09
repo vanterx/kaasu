@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -30,12 +32,16 @@ import com.example.expense.ui.expense.AddEditExpenseScreen
 import com.example.expense.ui.expense.ExpenseListScreen
 import com.example.expense.ui.expense.ExpenseViewModel
 import com.example.expense.ui.export.ExportScreen
+import com.example.expense.ui.export.ExportViewModel
 import com.example.expense.ui.settings.SettingsScreen
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     data object Expenses : Screen("expenses", "Expenses", Icons.AutoMirrored.Filled.ListAlt)
     data object Charts : Screen("charts", "Reports", Icons.Default.BarChart)
     data object Export : Screen("export", "Export", Icons.Default.FileDownload)
+    data object AddExpense : Screen("add_expense", "", Icons.Default.Edit)
+    data object EditExpense : Screen("edit_expense", "", Icons.Default.Edit)
+    data object Settings : Screen("settings", "", Icons.Default.Settings)
 }
 
 private val bottomNavScreens = listOf(Screen.Expenses, Screen.Charts, Screen.Export)
@@ -59,6 +65,9 @@ fun ExpenseNavGraph(dataModule: DataModule) {
     )
     val categoryViewModel: CategoryViewModel = viewModel(
         factory = CategoryViewModel.Factory(dataModule.categoryRepository)
+    )
+    val exportViewModel: ExportViewModel = viewModel(
+        factory = ExportViewModel.Factory(dataModule.expenseRepository)
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -102,16 +111,16 @@ fun ExpenseNavGraph(dataModule: DataModule) {
                 ExpenseListScreen(
                     viewModel = expenseViewModel,
                     currencyCode = currencyCode,
-                    onAddExpense = { navController.navigate("add_expense") },
+                    onAddExpense = { navController.navigate(Screen.AddExpense.route) },
                     onEditExpense = { expense ->
                         expenseViewModel.setEditingExpense(expense)
-                        navController.navigate("edit_expense")
+                        navController.navigate(Screen.EditExpense.route)
                     },
-                    onOpenSettings = { navController.navigate("settings") }
+                    onOpenSettings = { navController.navigate(Screen.Settings.route) }
                 )
             }
 
-            composable("add_expense") {
+            composable(Screen.AddExpense.route) {
                 AddEditExpenseScreen(
                     viewModel = expenseViewModel,
                     currencyCode = currencyCode,
@@ -122,7 +131,7 @@ fun ExpenseNavGraph(dataModule: DataModule) {
                 )
             }
 
-            composable("edit_expense") {
+            composable(Screen.EditExpense.route) {
                 AddEditExpenseScreen(
                     viewModel = expenseViewModel,
                     currencyCode = currencyCode,
@@ -137,7 +146,7 @@ fun ExpenseNavGraph(dataModule: DataModule) {
                 ChartScreen(viewModel = chartViewModel, currencyCode = currencyCode)
             }
 
-            composable("settings") {
+            composable(Screen.Settings.route) {
                 SettingsScreen(
                     categoryViewModel = categoryViewModel,
                     preferencesManager = dataModule.preferencesManager,
@@ -147,7 +156,7 @@ fun ExpenseNavGraph(dataModule: DataModule) {
             }
 
             composable(Screen.Export.route) {
-                ExportScreen(expenseRepository = dataModule.expenseRepository)
+                ExportScreen(viewModel = exportViewModel)
             }
         }
     }

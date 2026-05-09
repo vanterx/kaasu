@@ -19,8 +19,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import com.example.expense.util.dayStartMillis
 import kotlinx.coroutines.launch
-import java.util.Calendar
+import java.time.YearMonth
+import java.time.ZoneId
 
 enum class SortMode(val label: String) {
     DATE_DESC("Newest first"),
@@ -44,17 +46,11 @@ class ExpenseViewModel(
     private val deleteExpenseUseCase: DeleteExpenseUseCase
 ) : ViewModel() {
 
-    private val _selectedMonth = MutableStateFlow(Calendar.getInstance().let {
-        it.get(Calendar.MONTH) to it.get(Calendar.YEAR)
+    private val _selectedMonth = MutableStateFlow(YearMonth.now().let {
+        it.monthValue - 1 to it.year // month kept 0-based for repo compatibility
     })
 
-    private val _selectedDay = MutableStateFlow<Long?>(Calendar.getInstance().run {
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-        timeInMillis
-    })
+    private val _selectedDay = MutableStateFlow<Long?>(dayStartMillis(System.currentTimeMillis()))
 
     private val _searchQuery = MutableStateFlow("")
     private val _selectedCategoryFilter = MutableStateFlow<Long?>(null)
@@ -125,12 +121,7 @@ class ExpenseViewModel(
 
     val dailyGroups: StateFlow<List<DailyGroup>> = filteredExpenses.map { list ->
         list.groupBy { expense ->
-            Calendar.getInstance().run {
-                timeInMillis = expense.dateMillis
-                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-                timeInMillis
-            }
+            dayStartMillis(expense.dateMillis)
         }.map { (dayStart, items) ->
             DailyGroup(dayStart, items, items.sumOf { it.amount })
         }.sortedByDescending { it.dayStartMillis }
@@ -143,12 +134,7 @@ class ExpenseViewModel(
     val dayTotal: StateFlow<Double?> = combine(_selectedDay, filteredExpenses, _isDateRangeMode) { day, all, isRange ->
         if (isRange || day == null) null
         else {
-            val start = Calendar.getInstance().run {
-                timeInMillis = day
-                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-                timeInMillis
-            }
+            val start = dayStartMillis(day)
             all.filter { it.dateMillis in start until start + 86_400_000L }.sumOf { it.amount }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -194,13 +180,10 @@ class ExpenseViewModel(
         val newMode = !_isDateRangeMode.value
         _isDateRangeMode.value = newMode
         if (newMode && (_dateRangeStart.value == null || _dateRangeEnd.value == null)) {
-            val now = Calendar.getInstance()
-            now.set(Calendar.DAY_OF_MONTH, 1)
-            now.set(Calendar.HOUR_OF_DAY, 0); now.set(Calendar.MINUTE, 0)
-            now.set(Calendar.SECOND, 0); now.set(Calendar.MILLISECOND, 0)
-            _dateRangeStart.value = now.timeInMillis
-            now.set(Calendar.DAY_OF_MONTH, now.getActualMaximum(Calendar.DAY_OF_MONTH))
-            _dateRangeEnd.value = now.timeInMillis
+            val zone = ZoneId.systemDefault()
+            val ym = YearMonth.now()
+            _dateRangeStart.value = ym.atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
+            _dateRangeEnd.value = ym.atEndOfMonth().atStartOfDay(zone).toInstant().toEpochMilli()
         }
     }
 

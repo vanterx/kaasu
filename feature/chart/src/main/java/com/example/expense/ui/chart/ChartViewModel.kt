@@ -14,15 +14,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
-import java.util.Calendar
+import java.time.YearMonth
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChartViewModel(
     private val expenseRepository: ExpenseRepository
 ) : ViewModel() {
 
-    private val _selectedMonth = MutableStateFlow(Calendar.getInstance().let {
-        it.get(Calendar.MONTH) to it.get(Calendar.YEAR)
+    private val _selectedMonth = MutableStateFlow(YearMonth.now().let {
+        it.monthValue - 1 to it.year // month kept 0-based for repo compatibility
     })
 
     private val _isYtdMode = MutableStateFlow(false)

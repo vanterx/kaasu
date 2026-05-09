@@ -9,7 +9,9 @@ import com.example.expense.core.domain.model.ExpenseItem
 import com.example.expense.core.domain.repository.ExpenseRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.util.Calendar
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.ZoneId
 
 internal class ExpenseRepositoryImpl(private val dao: ExpenseDao) : ExpenseRepository {
 
@@ -58,26 +60,23 @@ internal class ExpenseRepositoryImpl(private val dao: ExpenseDao) : ExpenseRepos
         dao.getAllExpensesSnapshot().toDomain()
 
     override fun getMonthRange(year: Int, month: Int): Pair<Long, Long> {
-        val calendar = Calendar.getInstance()
-        calendar.set(year, month, 1, 0, 0, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        val start = calendar.timeInMillis
-        calendar.add(Calendar.MONTH, 1)
-        return start to calendar.timeInMillis
+        val ym = YearMonth.of(year, month + 1) // month is 0-based from Calendar convention
+        val zone = ZoneId.systemDefault()
+        val start = ym.atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val end = ym.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        return start to end
     }
 
     override fun getYearToDateRange(year: Int, month: Int): Pair<Long, Long> {
-        val calendar = Calendar.getInstance()
-        calendar.set(year, Calendar.JANUARY, 1, 0, 0, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        val start = calendar.timeInMillis
-        calendar.set(year, month + 1, 1, 0, 0, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        return start to calendar.timeInMillis
+        val zone = ZoneId.systemDefault()
+        val start = LocalDate.of(year, 1, 1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val ym = YearMonth.of(year, month + 1)
+        val end = ym.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        return start to end
     }
 
     override fun getCurrentMonthRange(): Pair<Long, Long> {
-        val now = Calendar.getInstance()
-        return getMonthRange(now.get(Calendar.YEAR), now.get(Calendar.MONTH))
+        val now = YearMonth.now()
+        return getMonthRange(now.year, now.monthValue - 1)
     }
 }

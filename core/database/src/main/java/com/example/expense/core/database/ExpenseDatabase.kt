@@ -13,7 +13,7 @@ import com.example.expense.core.database.entity.ExpenseEntity
 
 @Database(
     entities = [ExpenseEntity::class, CategoryEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class ExpenseDatabase : RoomDatabase() {
@@ -31,6 +31,12 @@ abstract class ExpenseDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_expenses_dateMillis ON expenses (dateMillis)")
+            }
+        }
+
         fun create(context: Context): ExpenseDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -38,7 +44,7 @@ abstract class ExpenseDatabase : RoomDatabase() {
                     ExpenseDatabase::class.java,
                     "expense_tracker.db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                     .also { INSTANCE = it }
             }
