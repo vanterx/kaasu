@@ -37,7 +37,7 @@ Repository impls are `internal` to `:core:data`. Feature modules only see the in
   ├── :feature:chart     ← ChartScreen, ChartViewModel
   ├── :feature:category  ← CategoryScreen, CategoryViewModel
   ├── :feature:settings  ← SettingsScreen
-  ├── :feature:export    ← ExportScreen, CsvExporter
+  ├── :feature:export    ← ExportScreen, ExportViewModel, CsvExporter
   └── :core:data         (for DI wiring only)
 
 Each :feature:* depends on:
@@ -87,9 +87,11 @@ Business logic that was in ViewModels now lives in use case classes in `:core:do
 
 **Files:** `core/domain/.../usecase/GetFilteredExpensesUseCase.kt`, `SaveExpenseUseCase.kt`, `DeleteExpenseUseCase.kt`
 
-- `GetFilteredExpensesUseCase.execute(...)` — filtering, sorting, grouping (was in `ExpenseViewModel`)
-- `SaveExpenseUseCase.save/update(...)` — validation + repository call
+- `GetFilteredExpensesUseCase.execute(...)` — filtering, sorting, grouping (extracted from `ExpenseViewModel`)
+- `SaveExpenseUseCase.save/update(...)` — validation (`amount > 0`) + repository call
 - `DeleteExpenseUseCase(id)` — thin wrapper enabling testability
+
+Pure Kotlin means these are unit-testable without an emulator: `.\gradlew :core:domain:test`.
 
 ---
 
@@ -134,15 +136,30 @@ All `stateIn` calls use `WhileSubscribed(5_000)` — upstream stops 5 s after la
 
 **Files:** `feature/expense/.../ExpenseViewModel.kt`, `feature/expense/.../ExpenseListScreen.kt`
 
-Default view is today's expenses. Arrow buttons navigate prev/next day; date picker jumps to any date. Month switching resets the selected day.
+Default view is today's expenses. Arrow buttons navigate prev/next day; M3 `DatePicker` composable jumps to any date. Month switching resets the selected day.
+
+`dayStartMillis(millis)` in `core/ui/.../Formatters.kt` is the shared helper for truncating any timestamp to midnight — used by ViewModels and composables alike.
 
 ---
 
-## 8. Bottom nav + overlay route navigation
+## 8. All navigation routes as sealed Screen objects
 
 **Files:** `app/.../NavGraph.kt`
 
-3 bottom tabs: `Expenses`, `Reports`, `Export`. 3 overlay routes: `add_expense`, `edit_expense`, `settings` — bottom bar hidden for these. Visibility computed by checking `currentDestination.hierarchy`.
+All routes — bottom tabs and overlay screens — are declared as `sealed class Screen` objects. No raw string literals anywhere in navigation calls.
+
+```kotlin
+sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
+    data object Expenses   : Screen("expenses",    "Expenses", ...)
+    data object Charts     : Screen("charts",      "Reports",  ...)
+    data object Export     : Screen("export",      "Export",   ...)
+    data object AddExpense : Screen("add_expense", "",         ...)
+    data object EditExpense: Screen("edit_expense","",         ...)
+    data object Settings   : Screen("settings",   "",         ...)
+}
+```
+
+Bottom bar visibility computed by checking `currentDestination.hierarchy` against `bottomNavScreens`.
 
 ---
 
@@ -158,9 +175,9 @@ Default view is today's expenses. Arrow buttons navigate prev/next day; date pic
 
 ## 10. SAF for file operations (no storage permissions)
 
-**Files:** `feature/export/.../ExportScreen.kt`, `feature/export/.../util/CsvExporter.kt`
+**Files:** `feature/export/.../ExportScreen.kt`, `feature/export/.../ExportViewModel.kt`, `feature/export/.../util/CsvExporter.kt`
 
-CSV export uses `ActivityResultContracts.CreateDocument("text/csv")`. Content written via `context.contentResolver.openOutputStream(uri)`. No `READ/WRITE_EXTERNAL_STORAGE` permissions needed.
+CSV export uses `ActivityResultContracts.CreateDocument("text/csv")`. Export work runs in `ExportViewModel.viewModelScope` via `withContext(Dispatchers.IO)` — no raw `CoroutineScope`. No `READ/WRITE_EXTERNAL_STORAGE` permissions needed.
 
 ---
 
@@ -177,15 +194,18 @@ CSV export uses `ActivityResultContracts.CreateDocument("text/csv")`. Content wr
 **Files:** `core/database/.../ExpenseDatabase.kt`
 
 ```kotlin
-@Database(version = 2)
+@Database(version = 3)
 val MIGRATION_1_2 = object : Migration(1, 2) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE expenses ADD COLUMN account TEXT")
+    override fun migrate(db) { db.execSQL("ALTER TABLE expenses ADD COLUMN account TEXT") }
+}
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db) {
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_expenses_dateMillis ON expenses (dateMillis)")
     }
 }
 ```
 
-No `fallbackToDestructiveMigration()` — data preserved across upgrades.
+No `fallbackToDestructiveMigration()` — data preserved across upgrades. Current version: **3**.
 
 ---
 
@@ -211,3 +231,66 @@ Three precompiled script plugins avoid duplicating build config across modules:
 - `kaasu.android.feature` — extends compose + auto-adds `:core:domain` and `:core:ui` deps
 
 All module versions centralised in `gradle/libs.versions.toml`.
+
+---
+
+## 16. java.time.* for all date arithmetic
+
+**Files:** `core/data/.../ExpenseRepositoryImpl.kt`, `core/domain/.../GetFilteredExpensesUseCase.kt`, `core/ui/.../Formatters.kt`, `feature/expense/.../ExpenseViewModel.kt`, `feature/chart/.../ChartViewModel.kt`
+
+`java.util.Calendar` is banned. Use `java.time.*` (available from API 26, matching minSdk):
+
+| Old pattern | Replacement |
+|------------|-------------|
+| `Calendar.getInstance().get(MONTH/YEAR)` | `YearMonth.now().monthValue - 1` / `.year` |
+| Month range calculation | `YearMonth.of(y, m+1).atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()` |
+| Midnight truncation | `LocalDate.ofInstant(..., zone).atStartOfDay(zone).toInstant().toEpochMilli()` |
+| `isToday()`, `isSameDay()` | `LocalDate.ofInstant(...) == LocalDate.now()` |
+
+The shared `dayStartMillis(millis: Long): Long` helper in `Formatters.kt` is the single place for midnight truncation.
+
+---
+
+## 17. M3 DatePicker composable (not imperative dialog)
+
+**Files:** `feature/expense/.../ExpenseListScreen.kt`, `feature/expense/.../AddEditExpenseScreen.kt`
+
+`android.app.DatePickerDialog` is banned. Use the Material 3 `DatePicker` composable, which is rendered directly in the Compose tree with a state variable:
+
+```kotlin
+var showPicker by remember { mutableStateOf(false) }
+if (showPicker) {
+    val state = rememberDatePickerState(initialSelectedDateMillis = dateMillis)
+    DatePickerDialog(
+        onDismissRequest = { showPicker = false },
+        confirmButton = {
+            TextButton(onClick = {
+                state.selectedDateMillis?.let { onDateSelected(it) }
+                showPicker = false
+            }) { Text("OK") }
+        }
+    ) { DatePicker(state = state) }
+}
+```
+
+Requires `@OptIn(ExperimentalMaterial3Api::class)` on the enclosing composable function.
+
+---
+
+## 18. Unit tests in :core:domain (pure JVM)
+
+**Files:** `core/domain/src/test/java/.../usecase/`
+
+Use cases are pure Kotlin — tested with JUnit 4 + MockK + kotlinx-coroutines-test on the JVM. No emulator, no Android runtime.
+
+```kotlin
+@Test
+fun `save fails when amount is zero`() = runTest {
+    val result = useCase.save(0.0, "Coffee", null, 0L, null)
+    assertTrue(result.isFailure)
+}
+```
+
+Run with: `.\gradlew :core:domain:test` (≈3 s locally). Runs automatically in CI before every `assembleDebug`.
+
+**Convention:** every new use case ships with a matching test file. Every bug fix in `:core:domain` adds a regression test.

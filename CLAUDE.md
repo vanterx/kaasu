@@ -33,7 +33,7 @@ Tamil for "money, cash, coin" — origin of the English word "cash".
 :feature:chart               # ChartScreen, ChartViewModel
 :feature:category            # CategoryScreen, CategoryViewModel
 :feature:settings            # SettingsScreen
-:feature:export              # ExportScreen, CsvExporter
+:feature:export              # ExportScreen, ExportViewModel, CsvExporter
 ```
 
 **Dependency rule:** feature modules only import `:core:domain` and `:core:ui`. Only `:app` imports `:core:data`.
@@ -65,6 +65,10 @@ APK: `app/build/outputs/apk/debug/Kaasu-debug.apk`
 - **Transparent TopAppBar + zero-elevation cards** — `Color.Transparent` app bars, `BorderStroke(1.dp)` cards
 - **Theme tokens only** — use `MaterialTheme.colorScheme.*`, never hardcode colors
 - **Feature module boundary rule** — feature modules must NOT import `:core:data` or `:core:database`
+- **java.time.* only** — `java.util.Calendar` is banned; use `YearMonth`, `LocalDate`, `ZoneId` (API 26+, no desugaring needed)
+- **M3 DatePicker** — `android.app.DatePickerDialog` is banned; use the `DatePicker` + `DatePickerDialog` composables from Material 3
+- **ViewModel for side-effects** — screens must not create raw `CoroutineScope`; all async work lives in `viewModelScope`
+- **R8 enabled** — release builds use `isMinifyEnabled = true` + `isShrinkResources = true`; add ProGuard rules if new reflection-based libs are added
 
 ## Additional Documentation
 
@@ -74,7 +78,7 @@ Check these files when relevant to the task:
 |------|---------|----------------|
 | `AGENTS.md` | Full project structure, build commands, signing setup | Project setup, CI/CD |
 | `CONTRIBUTING.md` | Branching, PR, release workflow, signing | Git operations, releases |
-| `.claude/docs/architectural_patterns.md` | 15 patterns extracted from codebase | Architecture changes, new features |
+| `.claude/docs/architectural_patterns.md` | 18 patterns extracted from codebase | Architecture changes, new features |
 | `README.md` | User-facing features, screenshots | Feature descriptions, download links |
 | `backlog/improvements.md` | Prioritized feature plan (local-only, gitignored) | Planning new features |
 
@@ -97,3 +101,6 @@ See `.claude/docs/architectural_patterns.md` for full details on these repeating
 13. Zero-elevation card design
 14. `data class.copy()` for immutable state
 15. Gradle convention plugins (build-logic)
+16. java.time.* for all date arithmetic
+17. M3 DatePicker composable (not imperative dialog)
+18. Unit tests in :core:domain (pure JVM)

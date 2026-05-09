@@ -51,13 +51,13 @@ Multi-module Gradle project. Each module has its own `build.gradle.kts`. Version
 :feature:chart          # ChartScreen, ChartViewModel
 :feature:category       # CategoryScreen, CategoryViewModel
 :feature:settings       # SettingsScreen
-:feature:export         # ExportScreen, CsvExporter
+:feature:export         # ExportScreen, ExportViewModel, CsvExporter
 build-logic/            # Convention plugins: kaasu.android.library/compose/feature
 gradle/
 └── libs.versions.toml  # All dependency versions
 .claude/
 └── docs/
-    └── architectural_patterns.md    # 15 extracted codebase patterns
+    └── architectural_patterns.md    # 18 extracted codebase patterns
 scripts/
 ├── install-hooks.sh                 # One-time hook installation
 └── hooks/pre-commit                 # Release tagging reminder hook
@@ -80,12 +80,24 @@ scripts/
 - **No third-party chart libraries** — charts drawn with Compose `Canvas`
 - **No LiveData** — `StateFlow` exclusively
 - **No dynamic color** — the premium palette is always applied (do not re-enable dynamic color)
+- **No `java.util.Calendar`** — use `java.time.*` (`YearMonth`, `LocalDate`, `ZoneId`)
+- **No `android.app.DatePickerDialog`** — use M3 `DatePicker` composable
+- **No raw `CoroutineScope`** in screens — all async work in `viewModelScope`
 - CSV export uses `ActivityResultContracts.CreateDocument` (no storage permissions needed)
 - Default categories seeded on first launch via `CategoryRepository.seedDefaultCategories()`
 - Signing credentials loaded from `keystore.properties` (git-ignored); never hardcoded
+- R8 minification enabled for release builds
 
-See [CLAUDE.md](CLAUDE.md) for additional conventions, design system tokens, and known technical debt.
-See [.claude/docs/architectural_patterns.md](.claude/docs/architectural_patterns.md) for 12 extracted patterns.
+## Testing
+
+- Unit tests live in `core/domain/src/test/` — pure JVM, no emulator needed
+- Run: `.\gradlew :core:domain:test` (≈3 s) or `.\gradlew test` for all modules
+- CI runs `./gradlew test` before every `assembleDebug` on push and PR
+- Test stack: JUnit 4 + MockK + kotlinx-coroutines-test
+- **Convention**: every new use case ships with a test file; every bug fix adds a regression test
+
+See [CLAUDE.md](CLAUDE.md) for additional conventions, design system tokens, and module map.
+See [.claude/docs/architectural_patterns.md](.claude/docs/architectural_patterns.md) for 18 extracted patterns.
 
 ## Signing (CI)
 

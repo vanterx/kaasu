@@ -108,7 +108,27 @@ ci: decode keystore with printf to avoid CRLF issues
 
 ---
 
-### 4. CI Build
+### 4. Testing
+
+Unit tests live in `:core:domain` — pure Kotlin, no emulator required.
+
+```powershell
+# Run domain use-case tests only (~3 s)
+.\gradlew :core:domain:test
+
+# Run all unit tests across all modules
+.\gradlew test
+```
+
+**Test stack:** JUnit 4 + MockK + kotlinx-coroutines-test (declared in `gradle/libs.versions.toml`).
+
+**Convention:** every new use case class in `:core:domain` must ship with a matching test file in `core/domain/src/test/`. Every bug fix in the domain layer adds a regression test. CI blocks the PR if any test fails.
+
+Adding tests for Android ViewModels and Compose screens (Robolectric or instrumented) is tracked as tech debt item #8 in `backlog/improvements.md`.
+
+---
+
+### 5. CI Build
 
 **Trigger:** push to `main` or any pull request targeting `main`.
 
@@ -120,14 +140,15 @@ ci: decode keystore with printf to avoid CRLF issues
 3. Restore Gradle cache
 4. Decode keystore from `KEYSTORE_BASE64` secret
 5. Write `keystore.properties` from secrets
-6. `./gradlew assembleDebug`
-7. Upload `Kaasu-debug.apk` as a build artifact
+6. `./gradlew test` — unit tests (fails build if any test fails; results uploaded as artifact)
+7. `./gradlew assembleDebug`
+8. Upload `Kaasu-debug.apk` as a build artifact
 
 A green CI run is required before merging any PR.
 
 ---
 
-### 5. Release
+### 6. Release
 
 **Trigger:** pushing a `v*` tag to `main`.
 
@@ -150,7 +171,7 @@ git push origin v1.2.0
 
 ---
 
-### 6. Signing
+### 7. Signing
 
 Release and debug builds are both signed with the shared keystore. Credentials are never stored in the repo — they live in:
 
