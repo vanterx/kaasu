@@ -38,6 +38,23 @@ git checkout -b feat/my-feature
 
 ---
 
+### 1b. Module boundaries
+
+The project uses a multi-module structure. Follow this rule when deciding where code lives:
+
+| Layer | Module | Can import |
+|-------|--------|-----------|
+| Domain models & interfaces | `:core:domain` | `:core:common` only |
+| Room DB, DAOs, entities | `:core:database` | `:core:domain` |
+| Repository impls, mappers | `:core:data` | `:core:domain` + `:core:database` |
+| Theme, formatters, shared UI | `:core:ui` | — |
+| Feature screens & ViewModels | `:feature:*` | `:core:domain` + `:core:ui` |
+| DI wiring, NavGraph | `:app` | all modules |
+
+**Hard rule:** Feature modules must never import `:core:data` or `:core:database`. If a feature needs data, it goes through a `:core:domain` interface. Only `:app` wires the implementation via `DataModule`.
+
+---
+
 ### 2. Commits
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/):

@@ -4,194 +4,210 @@ Patterns extracted from the codebase. These repeat across multiple files and def
 
 ---
 
-## 1. Manual DI via Application class
+## 1. Manual DI via DataModule + Application class
 
-Singleton dependencies held in `ExpenseApp` (lazy properties), passed down through constructors.
-No Hilt, no Dagger, no service locator.
+All singleton dependencies are created in `DataModule` (`:core:data`), which is instantiated lazily in `ExpenseApp`. `MainActivity` passes the module to `NavGraph`, which wires ViewModel factories.
 
-**Files:** `ExpenseApp.kt:15-20`, `MainActivity.kt:15-21`
+**Files:** `core/data/.../DataModule.kt`, `app/.../ExpenseApp.kt`, `app/.../NavGraph.kt`
 
 ```
 ExpenseApp (Application)
-  ├── database: ExpenseDatabase
-  ├── expenseRepository: ExpenseRepository (→ ExpenseRepositoryImpl)
-  ├── categoryRepository: CategoryRepository (→ CategoryRepositoryImpl)
-  └── preferencesManager: PreferencesManager
-        ↓
-  MainActivity casts application → ExpenseNavGraph(params)
-        ↓
-  NavGraph creates ViewModels via ViewModelProvider.Factory(params)
+  └── dataModule: DataModule (lazy)
+        ├── expenseRepository: ExpenseRepository   (ExpenseRepositoryImpl, internal)
+        ├── categoryRepository: CategoryRepository (CategoryRepositoryImpl, internal)
+        ├── preferencesManager: PreferencesManager
+        ├── getFilteredExpensesUseCase: GetFilteredExpensesUseCase
+        ├── saveExpenseUseCase: SaveExpenseUseCase
+        └── deleteExpenseUseCase: DeleteExpenseUseCase
+              ↓
+        MainActivity → NavGraph(dataModule)
+              ↓
+        NavGraph creates ViewModels via ViewModelProvider.Factory(use cases)
 ```
 
-Property types are interfaces; implementations are `*Impl` classes created at init time.
+Repository impls are `internal` to `:core:data`. Feature modules only see the interfaces from `:core:domain`. Only `:app` depends on `:core:data`.
 
 ---
 
-## 2. Interface-segregated repository layer
+## 2. Module dependency graph
 
-Every repository is an interface with a single `*Impl` class wrapping the Room DAO.
+```
+:app
+  ├── :feature:expense   ← ExpenseListScreen, AddEditExpenseScreen, ExpenseViewModel
+  ├── :feature:chart     ← ChartScreen, ChartViewModel
+  ├── :feature:category  ← CategoryScreen, CategoryViewModel
+  ├── :feature:settings  ← SettingsScreen
+  ├── :feature:export    ← ExportScreen, CsvExporter
+  └── :core:data         (for DI wiring only)
 
-**Files:** `ExpenseRepository.kt:10-24`, `ExpenseRepositoryImpl.kt:12`, `CategoryRepository.kt:7-14`, `CategoryRepositoryImpl.kt:10`
+Each :feature:* depends on:
+  ├── :core:domain       ← repository interfaces, domain models, use cases
+  └── :core:ui           ← theme, Formatters, CurrencyPickerDialog
+
+:core:data depends on:
+  ├── :core:domain       (re-exported via api())
+  └── :core:database     ← Room DB, DAOs, entities (internal)
+
+:core:database depends on:
+  └── :core:domain       (for CategoryTotal, AccountTotal in DAO queries)
+
+:core:common — AppResult (pure Kotlin, no Android)
+```
+
+**Rule:** Feature modules must never import `:core:data` or `:core:database` directly.
+
+---
+
+## 3. Interface-segregated repository layer with domain models
+
+Repository interfaces live in `:core:domain` and reference only domain models (no Room annotations). Implementations in `:core:data` are `internal` and map between Room entities and domain models.
+
+**Files:** `core/domain/.../repository/ExpenseRepository.kt`, `core/data/.../repository/ExpenseRepositoryImpl.kt`
 
 ```kotlin
+// :core:domain — visible to all modules
 interface ExpenseRepository {
-    fun getAllExpenses(): Flow<List<ExpenseWithCategory>>
-    suspend fun saveExpense(expense: Expense): Long
+    fun getAllExpenses(): Flow<List<ExpenseItem>>
+    suspend fun saveExpense(amount, description, categoryId, dateMillis, account): Long
     // ...
 }
 
-class ExpenseRepositoryImpl(private val dao: ExpenseDao) : ExpenseRepository {
-    override fun getAllExpenses() = dao.getAllExpenses()
+// :core:data — internal, only :app can wire it
+internal class ExpenseRepositoryImpl(private val dao: ExpenseDao) : ExpenseRepository {
+    override fun getAllExpenses() = dao.getAllExpenses().map { it.toDomain() }
     // ...
 }
 ```
 
-DAO is the single data source — no remote/cache layers. Repository only delegates.
+---
+
+## 4. Thin use cases in :core:domain
+
+Business logic that was in ViewModels now lives in use case classes in `:core:domain`. They are pure Kotlin (no Android), injected by `DataModule`, and passed to ViewModel factories.
+
+**Files:** `core/domain/.../usecase/GetFilteredExpensesUseCase.kt`, `SaveExpenseUseCase.kt`, `DeleteExpenseUseCase.kt`
+
+- `GetFilteredExpensesUseCase.execute(...)` — filtering, sorting, grouping (was in `ExpenseViewModel`)
+- `SaveExpenseUseCase.save/update(...)` — validation + repository call
+- `DeleteExpenseUseCase(id)` — thin wrapper enabling testability
 
 ---
 
-## 3. Room Entity → Display Model → Compose UI pipeline
+## 5. Room Entity → Domain Model → Compose UI pipeline
 
-Room-annotated entities never reach Compose composables. A pure-Kotlin display model sits between
-them, built via mapper extension functions in the ViewModel.
+Room-annotated entities (`ExpenseEntity`, `CategoryEntity`) never leave `:core:database`. Mappers in `:core:data` convert them to domain models. UI only sees domain types.
 
-**Files:** `Expense.kt:20-27`, `ExpenseDisplay.kt:3-12`, `Mappers.kt:8-34`, `ExpenseViewModel.kt:70-92`
+**Files:** `core/database/.../entity/`, `core/data/.../mapper/Mappers.kt`, `core/domain/.../model/`
 
 ```
-ExpenseWithCategory (Room relation)          Expense.kt:20 / ExpenseWithCategory.kt
+ExpenseWithCategoryEntity (Room relation)    core/database/entity/
         │
-        ▼ .toDisplay()                        Mappers.kt:8
-ExpenseDisplay (pure Kotlin data class)       ExpenseDisplay.kt:3
+        ▼ .toDomain()                        core/data/mapper/Mappers.kt (internal)
+ExpenseItem (pure Kotlin)                    core/domain/model/ExpenseItem.kt
         │
-        ▼ via DailyGroup StateFlow            ExpenseViewModel.kt:70
-Compose UI (ExpenseCard)                      ExpenseListScreen.kt:315
+        ▼ via DailyGroup StateFlow
+Compose UI (ExpenseCard)                     feature/expense/.../ExpenseListScreen.kt
 ```
-
-Key: ViewModel maps entities → display models in the StateFlow pipeline. UI never imports `@Entity` or `@Relation` classes.
 
 ---
 
-## 4. StateFlow-only reactive streams
+## 6. StateFlow-only reactive streams
 
 No `LiveData`. No `SharedFlow`. All observable state is `StateFlow<T>`.
 
-**Files:** `ExpenseViewModel.kt:44-114`, `ChartViewModel.kt:27-42`, `CategoryViewModel.kt:17-18`
+**Files:** `feature/expense/.../ExpenseViewModel.kt`, `feature/chart/.../ChartViewModel.kt`
 
-Pattern for reactive derivation:
 ```kotlin
 private val _foo = MutableStateFlow(init)
 val foo: StateFlow<T> = _foo.asStateFlow()
 
 val derived: StateFlow<U> = _foo
-    .combine(repository.someFlow()) { a, b -> compute(a, b) }
-    .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    .combine(other) { a, b -> compute(a, b) }
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 ```
 
-Mutable state is private. Derived state uses `combine`/`flatMapLatest`. All `stateIn` uses `Lazily` with `viewModelScope`.
+All `stateIn` calls use `WhileSubscribed(5_000)` — upstream stops 5 s after last subscriber leaves.
 
 ---
 
-## 5. Day-based expense navigation
+## 7. Day-based expense navigation
 
-Expenses default to today (single day view), with date picker for jumping to other dates.
-No month-grouped list view in the default screen.
+**Files:** `feature/expense/.../ExpenseViewModel.kt`, `feature/expense/.../ExpenseListScreen.kt`
 
-**Files:** `ExpenseViewModel.kt:35-42`, `ExpenseListScreen.kt:80-100,148-156`
-
-```
-_selectedDay = today's midnight (default)    ExpenseViewModel.kt:35
-        │
-DayNavigationHeader (prev/next day arrows)   ExpenseListScreen.kt:220
-        │
-DatePickerDialog (jump to any date)           ExpenseListScreen.kt:84
-```
-
-Day boundaries computed with `Calendar` millis arithmetic. Month boundaries handled transparently
-by prev/next day arrows (crossing month boundaries works naturally).
+Default view is today's expenses. Arrow buttons navigate prev/next day; date picker jumps to any date. Month switching resets the selected day.
 
 ---
 
-## 6. Bottom nav + overlay route navigation
+## 8. Bottom nav + overlay route navigation
 
-**Files:** `NavGraph.kt:37-47,70-98`
+**Files:** `app/.../NavGraph.kt`
 
-3 bottom tabs: `Expenses`, `Reports`, `Export` → `bottomNavScreens` list.
-3 overlay routes: `add_expense`, `edit_expense`, `settings` — bottom bar hidden for these.
-
-Bottom bar visibility: check if `currentDestination.hierarchy` matches any `bottomNavScreens`.
-Routes navigate with `popUpTo(findStartDestination)`, `launchSingleTop`, `restoreState`.
+3 bottom tabs: `Expenses`, `Reports`, `Export`. 3 overlay routes: `add_expense`, `edit_expense`, `settings` — bottom bar hidden for these. Visibility computed by checking `currentDestination.hierarchy`.
 
 ---
 
-## 7. Compose Canvas custom charts (no third-party libs)
+## 9. Compose Canvas custom charts (no third-party libs)
 
-**Files:** `ChartScreen.kt:210-263,305-353`, `Color.kt:27-31`
+**Files:** `feature/chart/.../ChartScreen.kt`, `core/ui/.../theme/Color.kt`
 
 - Donut/pie: `Canvas` + `drawArc()` with `Stroke(width)`, center text via native `android.graphics.Paint`
 - Bar charts: `Box` with `fillMaxWidth(fraction)` nested inside a background `Box`
-- 12-color palette: `ChartColors` list, indexed by `Category.colorIndex % ChartColors.size`
+- 12-color palette: `ChartColors` in `Color.kt`, indexed by `Category.colorIndex % ChartColors.size`
 
 ---
 
-## 8. SAF for file operations (no storage permissions)
+## 10. SAF for file operations (no storage permissions)
 
-**Files:** `ExportScreen.kt:49-67`, `CsvExporter.kt:14-29`
+**Files:** `feature/export/.../ExportScreen.kt`, `feature/export/.../util/CsvExporter.kt`
 
-CSV export uses `ActivityResultContracts.CreateDocument("text/csv")` — user picks destination.
-Content written via `context.contentResolver.openOutputStream(uri)`.
-No `READ/WRITE_EXTERNAL_STORAGE` permissions needed.
-
-Same pattern would apply to backup/restore (zip via SAF), import (pick CSV via `OpenDocument`).
+CSV export uses `ActivityResultContracts.CreateDocument("text/csv")`. Content written via `context.contentResolver.openOutputStream(uri)`. No `READ/WRITE_EXTERNAL_STORAGE` permissions needed.
 
 ---
 
-## 9. Category seeding on first launch
+## 11. Category seeding on first launch
 
-**Files:** `CategoryRepositoryImpl.kt:20-34`, `ExpenseApp.kt:24-28`
+**Files:** `core/data/.../repository/CategoryRepositoryImpl.kt`, `app/.../ExpenseApp.kt`
 
-`seedDefaultCategories()` checks `dao.getCategoryCount() == 0` then inserts 8 fixed categories
-with `colorIndex` 0–7. Called from `ExpenseApp.onCreate()` in `applicationScope` (IO dispatcher).
-
-Categories: Food & Dining, Transport, Shopping, Bills & Utilities, Entertainment, Health, Education, Other.
+`seedDefaultCategories()` checks `dao.getCategoryCount() == 0` then inserts 8 fixed categories with `colorIndex` 0–7. Called from `ExpenseApp.onCreate()` in `applicationScope` (IO dispatcher).
 
 ---
 
-## 10. Database migration with version numbering
+## 12. Database migration with version numbering
 
-**Files:** `ExpenseDatabase.kt:10-12,26-30`
+**Files:** `core/database/.../ExpenseDatabase.kt`
 
 ```kotlin
 @Database(version = 2)
-// ...
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE expenses ADD COLUMN account TEXT")
     }
 }
-// ... builder.addMigrations(MIGRATION_1_2)
 ```
 
-Each schema change gets a `Migration` object. Migrations passed via `addMigrations()`.
-No `fallbackToDestructiveMigration()` — data is preserved across upgrades.
+No `fallbackToDestructiveMigration()` — data preserved across upgrades.
 
 ---
 
-## 11. Zero-elevation card design
+## 13. Zero-elevation card design
 
-**Files:** `ExpenseListScreen.kt:321-331`, `ChartScreen.kt:127-134`, `ExportScreen.kt:119-126`, `CategoryScreen.kt:109-120`
-
-All cards follow: `BorderStroke(1.dp, colorScheme.outlineVariant)` + `CardDefaults.cardElevation(defaultElevation = 0.dp)`.
-No shadow-based elevation anywhere. Container color: `surfaceContainerLow`.
+All cards: `BorderStroke(1.dp, colorScheme.outlineVariant)` + `CardDefaults.cardElevation(defaultElevation = 0.dp)`. Container color: `surfaceContainerLow`. No shadow elevation anywhere.
 
 ---
 
-## 12. `data class.copy()` for immutable state updates
+## 14. `data class.copy()` for immutable state updates
 
 All entity/display model mutations use `copy()`. Never mutate properties in-place.
 
-**Files:** `ExpenseViewModel.kt:162-169`, `CategoryViewModel.kt:20-28`
+---
 
-```kotlin
-existingExpense.copy(amount = amount, description = description, ...)
-category.copy(name = name, colorIndex = colorIndex)
-```
+## 15. Gradle convention plugins (build-logic)
+
+**Files:** `build-logic/src/main/kotlin/`
+
+Three precompiled script plugins avoid duplicating build config across modules:
+- `kaasu.android.library` — AGP library + Kotlin, minSdk 26, Java 17
+- `kaasu.android.compose` — extends library with Compose BOM + compiler options
+- `kaasu.android.feature` — extends compose + auto-adds `:core:domain` and `:core:ui` deps
+
+All module versions centralised in `gradle/libs.versions.toml`.

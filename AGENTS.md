@@ -36,48 +36,28 @@ bash scripts/install-hooks.sh
 
 This installs a pre-commit hook that reminds about release tagging when `versionName` changes or 10+ commits accumulate since the last tag.
 
-## Project Structure
+## Module Structure
+
+Multi-module Gradle project. Each module has its own `build.gradle.kts`. Versions centralised in `gradle/libs.versions.toml`. Convention plugins in `build-logic/`.
 
 ```
-app/src/main/java/com/example/expense/
-├── ExpenseApp.kt                    # Application class (DI container)
-├── MainActivity.kt                  # Single Activity entry point
-├── data/
-│   ├── db/
-│   │   ├── ExpenseDatabase.kt       # Room DB singleton
-│   │   ├── ExpenseDao.kt            # Expense CRUD + reporting queries
-│   │   └── CategoryDao.kt           # Category CRUD
-│   ├── model/
-│   │   ├── Expense.kt               # Room entity (id, amount, description, categoryId, date)
-│   │   ├── Category.kt              # Room entity (id, name, colorIndex)
-│   │   ├── ExpenseWithCategory.kt   # Room @Relation mapping
-│   │   └── ExpenseDisplay.kt        # Pure-Kotlin display model (no Room annotations)
-│   ├── mapper/
-│   │   └── Mappers.kt               # Entity ↔ Display extension functions
-│   └── repository/
-│       ├── ExpenseRepository.kt     # Interface (abstracts DAO)
-│       ├── ExpenseRepositoryImpl.kt # Implementation wrapping ExpenseDao
-│       ├── CategoryRepository.kt    # Interface
-│       └── CategoryRepositoryImpl.kt# Implementation, seeds defaults
-├── ui/
-│   ├── navigation/NavGraph.kt       # All routes + bottom nav bar (3 tabs)
-│   ├── theme/
-│   │   ├── Color.kt                 # Premium palette tokens
-│   │   └── Theme.kt                 # Custom light + dark color schemes
-│   ├── expense/                     # Day-based expense list, add/edit, ViewModel, CurrencyPicker
-│   ├── category/                    # Category list content + dialog (used by settings)
-│   ├── chart/                       # Pie/bar charts via Compose Canvas
-│   ├── settings/                    # Global settings (categories + currency)
-│   └── export/                      # CSV export via SAF
-└── util/
-    ├── AppResult.kt                  # Success/Error sealed class
-    ├── CsvExporter.kt               # CSV generation
-    ├── Formatters.kt                # Currency & date formatting
-    └── PreferencesManager.kt        # DataStore currency preference
-.backlog/                             # Feature roadmap (gitignored)
+:app                    # Shell: ExpenseApp, MainActivity, NavGraph (DI wiring only)
+:core:common            # AppResult — pure Kotlin, no Android
+:core:domain            # Repository interfaces, domain models (ExpenseItem, Category, etc.), use cases
+:core:database          # Room DB, DAOs, entities (internal — only :core:data sees this)
+:core:data              # Repository impls, Mappers, PreferencesManager, DataModule
+:core:ui                # Theme (Color, Theme), Formatters, CurrencyPickerDialog
+:feature:expense        # ExpenseListScreen, AddEditExpenseScreen, ExpenseViewModel
+:feature:chart          # ChartScreen, ChartViewModel
+:feature:category       # CategoryScreen, CategoryViewModel
+:feature:settings       # SettingsScreen
+:feature:export         # ExportScreen, CsvExporter
+build-logic/            # Convention plugins: kaasu.android.library/compose/feature
+gradle/
+└── libs.versions.toml  # All dependency versions
 .claude/
 └── docs/
-    └── architectural_patterns.md    # 12 extracted codebase patterns
+    └── architectural_patterns.md    # 15 extracted codebase patterns
 scripts/
 ├── install-hooks.sh                 # One-time hook installation
 └── hooks/pre-commit                 # Release tagging reminder hook
@@ -85,12 +65,12 @@ scripts/
 
 ## Architecture
 
-- **MVVM + Repository**: UI → ViewModel → Repository (interface) → RepositoryImpl → Room DAO → SQLite
-- **Manual DI**: `ExpenseApp` holds singleton instances (interfaces), passed via `ViewModelProvider.Factory`
-- **Interface-segregated repositories**: Each repository is an interface with a single `*Impl` class
-- **Entity → Display pipeline**: Room entities mapped to pure-Kotlin display models before reaching Compose UI (`Mappers.kt`)
-- **StateFlow**: All data flows are `StateFlow` collected as Compose state
-- **Navigation**: `NavHost` with 3 bottom-bar destinations (Expenses, Reports, Export) + 3 overlay screens (add/edit expense, settings)
+- **Multi-module MVVM**: UI (`:feature:*`) → ViewModel → Use Case (`:core:domain`) → Repository interface (`:core:domain`) → RepositoryImpl (`:core:data`) → Room DAO (`:core:database`) → SQLite
+- **Manual DI via DataModule**: `DataModule` (`:core:data`) creates all dependencies; `ExpenseApp` holds it lazily; `NavGraph` wires ViewModel factories
+- **Domain isolation**: Feature modules depend only on `:core:domain` interfaces and `:core:ui`. Only `:app` imports `:core:data`
+- **Thin use cases**: `GetFilteredExpensesUseCase`, `SaveExpenseUseCase`, `DeleteExpenseUseCase` in `:core:domain` — pure Kotlin, unit-testable without Android
+- **StateFlow**: All reactive state is `StateFlow` with `WhileSubscribed(5_000)`
+- **Navigation**: `NavHost` with 3 bottom-bar tabs (Expenses, Reports, Export) + 3 overlay screens
 - **Min SDK**: 26 (Android 8), **Target SDK**: 34
 
 ## Key Conventions

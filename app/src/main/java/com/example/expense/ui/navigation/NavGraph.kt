@@ -22,8 +22,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.expense.data.repository.CategoryRepository
-import com.example.expense.data.repository.ExpenseRepository
+import com.example.expense.core.data.DataModule
 import com.example.expense.ui.category.CategoryViewModel
 import com.example.expense.ui.chart.ChartScreen
 import com.example.expense.ui.chart.ChartViewModel
@@ -32,7 +31,6 @@ import com.example.expense.ui.expense.ExpenseListScreen
 import com.example.expense.ui.expense.ExpenseViewModel
 import com.example.expense.ui.export.ExportScreen
 import com.example.expense.ui.settings.SettingsScreen
-import com.example.expense.util.PreferencesManager
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     data object Expenses : Screen("expenses", "Expenses", Icons.AutoMirrored.Filled.ListAlt)
@@ -40,29 +38,27 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     data object Export : Screen("export", "Export", Icons.Default.FileDownload)
 }
 
-private val bottomNavScreens = listOf(
-    Screen.Expenses,
-    Screen.Charts,
-    Screen.Export
-)
+private val bottomNavScreens = listOf(Screen.Expenses, Screen.Charts, Screen.Export)
 
 @Composable
-fun ExpenseNavGraph(
-    expenseRepository: ExpenseRepository,
-    categoryRepository: CategoryRepository,
-    preferencesManager: PreferencesManager
-) {
+fun ExpenseNavGraph(dataModule: DataModule) {
     val navController = rememberNavController()
-    val currencyCode by preferencesManager.currencyCode.collectAsState(initial = "NZD")
+    val currencyCode by dataModule.preferencesManager.currencyCode.collectAsState(initial = "NZD")
 
     val expenseViewModel: ExpenseViewModel = viewModel(
-        factory = ExpenseViewModel.Factory(expenseRepository, categoryRepository)
+        factory = ExpenseViewModel.Factory(
+            dataModule.expenseRepository,
+            dataModule.categoryRepository,
+            dataModule.getFilteredExpensesUseCase,
+            dataModule.saveExpenseUseCase,
+            dataModule.deleteExpenseUseCase
+        )
     )
     val chartViewModel: ChartViewModel = viewModel(
-        factory = ChartViewModel.Factory(expenseRepository)
+        factory = ChartViewModel.Factory(dataModule.expenseRepository)
     )
     val categoryViewModel: CategoryViewModel = viewModel(
-        factory = CategoryViewModel.Factory(categoryRepository)
+        factory = CategoryViewModel.Factory(dataModule.categoryRepository)
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -138,23 +134,20 @@ fun ExpenseNavGraph(
             }
 
             composable(Screen.Charts.route) {
-                ChartScreen(
-                    viewModel = chartViewModel,
-                    currencyCode = currencyCode
-                )
+                ChartScreen(viewModel = chartViewModel, currencyCode = currencyCode)
             }
 
             composable("settings") {
                 SettingsScreen(
                     categoryViewModel = categoryViewModel,
-                    preferencesManager = preferencesManager,
+                    preferencesManager = dataModule.preferencesManager,
                     currencyCode = currencyCode,
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
 
             composable(Screen.Export.route) {
-                ExportScreen(expenseRepository = expenseRepository)
+                ExportScreen(expenseRepository = dataModule.expenseRepository)
             }
         }
     }

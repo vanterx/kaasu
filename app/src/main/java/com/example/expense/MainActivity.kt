@@ -14,11 +14,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val app = application as ExpenseApp
             ExpenseTrackerTheme {
-                ExpenseNavGraph(
-                    expenseRepository = app.expenseRepository,
-                    categoryRepository = app.categoryRepository,
-                    preferencesManager = app.preferencesManager
-                )
+                ExpenseNavGraph(dataModule = app.dataModule)
             }
         }
     }
