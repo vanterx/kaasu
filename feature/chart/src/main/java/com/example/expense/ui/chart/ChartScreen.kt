@@ -3,6 +3,7 @@ package com.example.expense.ui.chart
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +40,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -48,6 +52,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -57,6 +62,8 @@ import com.example.expense.core.domain.model.CategoryTotal
 import com.example.expense.ui.theme.ChartColors
 import com.example.expense.util.formatCurrency
 import com.example.expense.util.formatMonthYear
+import kotlin.math.atan2
+import kotlin.math.sqrt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +76,7 @@ fun ChartScreen(viewModel: ChartViewModel, currencyCode: String, onOpenDrawer: (
     val (month, year) = monthYear
 
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+    var selectedSliceIndex by remember { mutableStateOf<Int?>(null) }
 
     Scaffold(
         topBar = {
@@ -154,6 +162,7 @@ fun ChartScreen(viewModel: ChartViewModel, currencyCode: String, onOpenDrawer: (
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                     ),
@@ -169,7 +178,9 @@ fun ChartScreen(viewModel: ChartViewModel, currencyCode: String, onOpenDrawer: (
                             totals = totalsWithData,
                             uncategorizedTotal = uncategorizedTotal,
                             total = total,
-                            centerLabel = formatCurrency(total, currencyCode),
+                            selectedSliceIndex = selectedSliceIndex,
+                            onSliceSelected = { selectedSliceIndex = it },
+                            currencyCode = currencyCode,
                             onSurfaceArgb = onSurfaceColor.toArgb()
                         )
 
@@ -208,6 +219,7 @@ fun ChartScreen(viewModel: ChartViewModel, currencyCode: String, onOpenDrawer: (
 
                     Card(
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                         ),
@@ -287,7 +299,7 @@ private fun AccountSummaryRow(
         )
         Text(
             formatCurrency(accountTotal.total, currencyCode),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
             fontWeight = FontWeight.Medium
         )
         Text(
@@ -304,24 +316,80 @@ private fun PieChart(
     totals: List<CategoryTotal>,
     uncategorizedTotal: Double,
     total: Double,
-    centerLabel: String,
+    selectedSliceIndex: Int?,
+    onSliceSelected: (Int?) -> Unit,
+    currencyCode: String,
     onSurfaceArgb: Int
 ) {
-    Canvas(modifier = modifier) {
+    val slices = remember(totals, uncategorizedTotal) {
+        totals.map { it to (it.total ?: 0.0) } +
+            if (uncategorizedTotal > 0) listOf(null to uncategorizedTotal) else emptyList()
+    }
+
+    val centerLabel = when {
+        selectedSliceIndex != null && selectedSliceIndex < totals.size -> {
+            val sel = totals[selectedSliceIndex]
+            sel.name
+        }
+        selectedSliceIndex != null -> "Uncategorized"
+        else -> formatCurrency(total, currencyCode)
+    }
+    val centerSubLabel = when {
+        selectedSliceIndex != null && selectedSliceIndex < totals.size ->
+            formatCurrency(totals[selectedSliceIndex].total ?: 0.0, currencyCode)
+        selectedSliceIndex != null ->
+            formatCurrency(uncategorizedTotal, currencyCode)
+        else -> null
+    }
+
+    Canvas(
+        modifier = modifier.pointerInput(slices.size, total) {
+            detectTapGestures { offset ->
+                val centerX = size.width / 2f
+                val centerY = size.height / 2f
+                val dx = offset.x - centerX
+                val dy = offset.y - centerY
+                val dist = sqrt(dx * dx + dy * dy)
+                val strokeWidth = 36f
+                val radius = (minOf(size.width, size.height).toFloat() - strokeWidth) / 2f
+                if (dist < radius - strokeWidth / 2f || dist > radius + strokeWidth / 2f) {
+                    onSliceSelected(null)
+                    return@detectTapGestures
+                }
+                val degrees = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
+                val canvasAngle = ((degrees + 360f) % 360f + 90f) % 360f
+                var runningAngle = 0f
+                var found = false
+                for (i in slices.indices) {
+                    val sweepAngle = (slices[i].second / total * 360).toFloat()
+                    if (canvasAngle >= runningAngle && canvasAngle < runningAngle + sweepAngle) {
+                        onSliceSelected(i)
+                        found = true
+                        break
+                    }
+                    runningAngle += sweepAngle
+                }
+                if (!found) onSliceSelected(null)
+            }
+        }
+    ) {
         val strokeWidth = 36f
         val diameter = size.minDimension - strokeWidth
         val topLeft = Offset((size.width - diameter) / 2f, (size.height - diameter) / 2f)
         val arcSize = Size(diameter, diameter)
         var startAngle = -90f
 
-        val slices = totals.map { it to (it.total ?: 0.0) } +
-            if (uncategorizedTotal > 0) listOf(null to uncategorizedTotal) else emptyList()
-
-        for ((item, amount) in slices) {
+        for (i in slices.indices) {
+            val (item, amount) = slices[i]
             val sweepAngle = (amount / total * 360).toFloat()
-            val color = when {
+            val baseColor = when {
                 item != null -> ChartColors[item.colorIndex % ChartColors.size]
                 else -> Color.Gray
+            }
+            val color = if (selectedSliceIndex == null || selectedSliceIndex == i) {
+                baseColor
+            } else {
+                baseColor.copy(alpha = 0.35f)
             }
             drawArc(
                 color = color,
@@ -338,17 +406,46 @@ private fun PieChart(
         val paint = android.graphics.Paint().apply {
             color = onSurfaceArgb
             textAlign = android.graphics.Paint.Align.CENTER
-            textSize = 38f
-            isFakeBoldText = true
             isAntiAlias = true
         }
-        drawIntoCanvas { canvas ->
-            canvas.nativeCanvas.drawText(
-                centerLabel,
-                size.width / 2f,
-                size.height / 2f + 14f,
-                paint
-            )
+        val paintSub = android.graphics.Paint().apply {
+            color = onSurfaceArgb
+            alpha = 180
+            textAlign = android.graphics.Paint.Align.CENTER
+            textSize = 28f
+            isAntiAlias = true
+            fontFeatureSettings = "tnum"
+        }
+        if (centerSubLabel != null) {
+            paint.textSize = 28f
+            paint.isFakeBoldText = false
+            paint.fontFeatureSettings = "tnum"
+            drawIntoCanvas { canvas ->
+                canvas.nativeCanvas.drawText(
+                    centerLabel,
+                    size.width / 2f,
+                    size.height / 2f - 4f,
+                    paint
+                )
+                canvas.nativeCanvas.drawText(
+                    centerSubLabel,
+                    size.width / 2f,
+                    size.height / 2f + 28f,
+                    paintSub
+                )
+            }
+        } else {
+            paint.textSize = 38f
+            paint.isFakeBoldText = true
+            paint.fontFeatureSettings = "tnum"
+            drawIntoCanvas { canvas ->
+                canvas.nativeCanvas.drawText(
+                    centerLabel,
+                    size.width / 2f,
+                    size.height / 2f + 14f,
+                    paint
+                )
+            }
         }
     }
 }
@@ -381,7 +478,7 @@ private fun LegendRow(
         )
         Text(
             formatCurrency(amount, currencyCode),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
             fontWeight = FontWeight.Medium
         )
         Text(
@@ -402,6 +499,7 @@ private fun BarChartCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
@@ -416,7 +514,7 @@ private fun BarChartCard(
                 Text(categoryName, style = MaterialTheme.typography.bodyMedium)
                 Text(
                     formatCurrency(amount, currencyCode),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
                 )

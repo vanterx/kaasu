@@ -1,5 +1,9 @@
 package com.example.expense.ui.expense
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
@@ -22,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,26 +40,31 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -100,6 +110,8 @@ fun ExpenseListScreen(
     val categories by viewModel.categories.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<ExpenseItem?>(null) }
+    val listState = rememberLazyListState()
+    val isScrolled by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 } }
 
     if (showDatePicker && !isDateRangeMode) {
         val datePickerState = rememberDatePickerState(
@@ -160,13 +172,14 @@ fun ExpenseListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
+            ExtendedFloatingActionButton(
+                expanded = !isScrolled,
+                icon = { Icon(Icons.Default.Add, "Add") },
+                text = { Text("Add Expense") },
                 onClick = onAddExpense,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(Icons.Default.Add, "Add expense")
-            }
+            )
         }
     ) { padding ->
         Column(
@@ -211,36 +224,106 @@ fun ExpenseListScreen(
             }
 
             if (dailyGroups.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "No expenses found.",
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                val hasActiveFilter = searchQuery.isNotEmpty()
+                    || selectedCategoryFilter != null
+                    || selectedAccountFilter != null
+                if (!hasActiveFilter) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                Icons.Default.MonetizationOn,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                "Nothing recorded yet",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "Tap + to add your first expense",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No expenses found.",
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp)
                 ) {
                     dailyGroups.forEach { group ->
                         item(key = "header_${group.dayStartMillis}") {
-                            DayHeader(
-                                dayMillis = group.dayStartMillis,
-                                total = group.total,
-                                currencyCode = currencyCode
-                            )
+                            AnimatedVisibility(
+                                visible = true,
+                                enter = fadeIn(tween(180)) + slideInVertically(tween(180)) { it / 3 }
+                            ) {
+                                DayHeader(
+                                    dayMillis = group.dayStartMillis,
+                                    total = group.total,
+                                    currencyCode = currencyCode
+                                )
+                            }
                         }
                         items(group.expenses, key = { it.id }) { item ->
-                            ExpenseCard(
-                                item = item,
-                                currencyCode = currencyCode,
-                                onClick = { onEditExpense(item) },
-                                onDelete = { pendingDelete = item }
+                            val dismissState = rememberSwipeToDismissBoxState(
+                                confirmValueChange = { value ->
+                                    if (value == SwipeToDismissBoxValue.EndToStart) {
+                                        pendingDelete = item
+                                        true
+                                    } else false
+                                }
                             )
+                            AnimatedVisibility(
+                                visible = true,
+                                enter = fadeIn(tween(180)) + slideInVertically(tween(180)) { it / 3 }
+                            ) {
+                                SwipeToDismissBox(
+                                    state = dismissState,
+                                    backgroundContent = {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(MaterialTheme.colorScheme.errorContainer)
+                                                .padding(end = 16.dp),
+                                            contentAlignment = Alignment.CenterEnd
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Delete,
+                                                "Delete",
+                                                tint = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                        }
+                                    }
+                                ) {
+                                    ExpenseCard(
+                                        item = item,
+                                        currencyCode = currencyCode,
+                                        onClick = { onEditExpense(item) }
+                                    )
+                                }
+                            }
                         }
                         item(key = "divider_${group.dayStartMillis}") {
                             Spacer(modifier = Modifier.height(16.dp))
@@ -388,7 +471,7 @@ private fun DayNavigationHeader(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     formatCurrency(total, currencyCode),
-                    style = MaterialTheme.typography.displaySmall,
+                    style = MaterialTheme.typography.displaySmall.copy(fontFeatureSettings = "tnum"),
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -448,7 +531,7 @@ private fun DateRangeHeader(
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             formatCurrency(total, currencyCode),
-            style = MaterialTheme.typography.displaySmall,
+            style = MaterialTheme.typography.displaySmall.copy(fontFeatureSettings = "tnum"),
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
@@ -533,6 +616,7 @@ private fun DatePickerChip(
 
     Card(
         modifier = modifier.clickable { showPicker = true },
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
@@ -606,7 +690,7 @@ private fun DayHeader(
             }
             Text(
                 formatCurrency(total, currencyCode),
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -621,14 +705,14 @@ private fun DayHeader(
 private fun ExpenseCard(
     item: ExpenseItem,
     currencyCode: String,
-    onClick: () -> Unit,
-    onDelete: () -> Unit
+    onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
@@ -651,19 +735,27 @@ private fun ExpenseCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     item.categoryName?.let { name ->
+                        val categoryColor = item.categoryColorIndex?.let { ChartColors[it % ChartColors.size] }
+                            ?: MaterialTheme.colorScheme.onSurfaceVariant
                         Box(
                             modifier = Modifier
-                                .background(
-                                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    RoundedCornerShape(4.dp)
-                                )
-                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(categoryColor.copy(alpha = 0.15f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
-                            Text(
-                                name,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .background(categoryColor, CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    name,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = categoryColor
+                                )
+                            }
                         }
                     } ?: Text(
                         "Uncategorized",
@@ -691,17 +783,10 @@ private fun ExpenseCard(
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 formatCurrency(item.amount, currencyCode),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.Delete,
-                    "Delete",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         }
     }
 }
