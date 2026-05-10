@@ -150,6 +150,11 @@ fun ExpenseListScreen(
                         }
                     }
                 },
+                navigationIcon = {
+                    IconButton(onClick = onOpenDrawer) {
+                        Icon(Icons.Default.Menu, "Menu")
+                    }
+                },
                 actions = {
                     IconButton(onClick = { viewModel.cycleSortMode() }) {
                         Icon(
@@ -164,9 +169,6 @@ fun ExpenseListScreen(
                             "Pick date",
                             tint = MaterialTheme.colorScheme.primary
                         )
-                    }
-                    IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Default.Menu, "Menu")
                     }
                 }
             )

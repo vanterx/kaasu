@@ -94,16 +94,16 @@ fun ChartScreen(viewModel: ChartViewModel, currencyCode: String, onOpenDrawer: (
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { viewModel.previousMonth() }) {
-                        Icon(Icons.Default.ChevronLeft, "Previous month")
+                    IconButton(onClick = onOpenDrawer) {
+                        Icon(Icons.Default.Menu, "Menu")
                     }
                 },
                 actions = {
+                    IconButton(onClick = { viewModel.previousMonth() }) {
+                        Icon(Icons.Default.ChevronLeft, "Previous month")
+                    }
                     IconButton(onClick = { viewModel.nextMonth() }) {
                         Icon(Icons.Default.ChevronRight, "Next month")
-                    }
-                    IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Default.Menu, "Menu")
                     }
                 }
             )

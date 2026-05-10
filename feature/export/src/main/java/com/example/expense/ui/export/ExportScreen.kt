@@ -55,7 +55,7 @@ fun ExportScreen(viewModel: ExportViewModel, onOpenDrawer: () -> Unit = {}) {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 title = { Text("Export Data") },
-                actions = {
+                navigationIcon = {
                     IconButton(onClick = onOpenDrawer) {
                         Icon(Icons.Default.Menu, "Menu")
                     }
