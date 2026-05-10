@@ -41,6 +41,7 @@ import com.example.expense.ui.expense.AddEditExpenseScreen
 import com.example.expense.ui.expense.ExpenseListScreen
 import com.example.expense.ui.expense.ExpenseViewModel
 import com.example.expense.ui.export.ExportScreen
+import com.example.expense.ui.category.CategoryManagementScreen
 import com.example.expense.ui.export.ExportViewModel
 import com.example.expense.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
@@ -52,6 +53,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     data object AddExpense : Screen("add_expense", "", Icons.Default.Edit)
     data object EditExpense : Screen("edit_expense", "", Icons.Default.Edit)
     data object Settings : Screen("settings", "", Icons.Default.Settings)
+    data object Categories : Screen("categories", "", Icons.Default.Settings)
 }
 
 private val mainScreens = listOf(Screen.Expenses, Screen.Charts, Screen.Export)
@@ -76,7 +78,7 @@ fun ExpenseNavGraph(dataModule: DataModule) {
         factory = ChartViewModel.Factory(dataModule.expenseRepository)
     )
     val categoryViewModel: CategoryViewModel = viewModel(
-        factory = CategoryViewModel.Factory(dataModule.categoryRepository)
+        factory = CategoryViewModel.Factory(dataModule.categoryRepository, dataModule.expenseRepository)
     )
     val exportViewModel: ExportViewModel = viewModel(
         factory = ExportViewModel.Factory(dataModule.expenseRepository)
@@ -165,6 +167,14 @@ fun ExpenseNavGraph(dataModule: DataModule) {
                         categoryViewModel = categoryViewModel,
                         preferencesManager = dataModule.preferencesManager,
                         currencyCode = currencyCode,
+                        onNavigateBack = { navController.popBackStack() },
+                        onManageCategories = { navController.navigate(Screen.Categories.route) }
+                    )
+                }
+
+                composable(Screen.Categories.route) {
+                    CategoryManagementScreen(
+                        viewModel = categoryViewModel,
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }

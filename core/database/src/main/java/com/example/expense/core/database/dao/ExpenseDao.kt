@@ -67,4 +67,7 @@ interface ExpenseDao {
 
     @Query("SELECT * FROM expenses WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): ExpenseEntity?
+
+    @Query("SELECT categoryId, COUNT(*) as count FROM expenses WHERE categoryId IS NOT NULL GROUP BY categoryId")
+    fun getCategoryUsageCounts(): Flow<List<com.example.expense.core.domain.model.CategoryUsage>>
 }

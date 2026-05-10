@@ -36,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,6 +46,7 @@ import com.example.expense.ui.theme.ChartColors
 @Composable
 fun CategoryListContent(
     categories: List<Category>,
+    usageCounts: Map<Long, Int> = emptyMap(),
     onEdit: (Category) -> Unit,
     onDelete: (Category) -> Unit,
     modifier: Modifier = Modifier
@@ -72,20 +72,17 @@ fun CategoryListContent(
             }
         }
     } else {
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(vertical = 12.dp)
-        ) {
+        Column(modifier = modifier) {
             Text(
                 "ALL CATEGORIES",
                 style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.5.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 12.dp)
+                modifier = Modifier.padding(top = 12.dp, bottom = 12.dp)
             )
             categories.forEach { category ->
                 CategoryCard(
                     category = category,
+                    expenseCount = usageCounts[category.id] ?: 0,
                     onEdit = { onEdit(category) },
                     onDelete = { onDelete(category) }
                 )
@@ -98,6 +95,7 @@ fun CategoryListContent(
 @Composable
 private fun CategoryCard(
     category: Category,
+    expenseCount: Int,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -111,37 +109,40 @@ private fun CategoryCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(24.dp)
-                    .background(color, CircleShape)
+                    .width(4.dp)
+                    .height(56.dp)
+                    .background(color)
             )
             Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(vertical = 12.dp)
+            ) {
                 Text(
                     category.name,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium
                 )
+                Text(
+                    if (expenseCount == 0) "No expenses"
+                    else "$expenseCount expense${if (expenseCount == 1) "" else "s"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             IconButton(onClick = onEdit) {
-                Icon(
-                    Icons.Default.Edit,
-                    "Edit",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Icon(Icons.Default.Edit, "Edit",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.Delete,
-                    "Delete",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Icon(Icons.Default.Delete, "Delete",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -150,11 +151,16 @@ private fun CategoryCard(
 @Composable
 fun CategoryDialog(
     existingCategory: Category?,
+    existingCategories: List<Category>,
     onDismiss: () -> Unit,
     onSave: (String, Int) -> Unit
 ) {
     var name by remember { mutableStateOf(existingCategory?.name ?: "") }
     var selectedColorIndex by remember { mutableIntStateOf(existingCategory?.colorIndex ?: 0) }
+
+    val isDuplicate = name.isNotBlank() && existingCategories.any {
+        it.name.equals(name.trim(), ignoreCase = true) && it.id != (existingCategory?.id ?: -1L)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -166,6 +172,10 @@ fun CategoryDialog(
                     onValueChange = { name = it },
                     label = { Text("Name") },
                     singleLine = true,
+                    isError = isDuplicate,
+                    supportingText = if (isDuplicate) {
+                        { Text("A category with this name already exists") }
+                    } else null,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -204,7 +214,7 @@ fun CategoryDialog(
         confirmButton = {
             TextButton(
                 onClick = { onSave(name.trim(), selectedColorIndex) },
-                enabled = name.isNotBlank()
+                enabled = name.isNotBlank() && !isDuplicate
             ) {
                 Text("Save", color = MaterialTheme.colorScheme.primary)
             }

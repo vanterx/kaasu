@@ -1,5 +1,6 @@
 package com.example.expense.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,15 +9,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,10 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.expense.core.domain.model.Category
 import com.example.expense.core.data.PreferencesManager
-import com.example.expense.ui.category.CategoryDialog
-import com.example.expense.ui.category.CategoryListContent
 import com.example.expense.ui.category.CategoryViewModel
 import com.example.expense.ui.expense.CurrencyPickerDialog
 import kotlinx.coroutines.launch
@@ -54,15 +52,13 @@ fun SettingsScreen(
     categoryViewModel: CategoryViewModel,
     preferencesManager: PreferencesManager,
     currencyCode: String,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onManageCategories: () -> Unit
 ) {
     val categories by categoryViewModel.categories.collectAsState()
     val themeMode by preferencesManager.themeMode.collectAsState(initial = "SYSTEM")
     val scope = rememberCoroutineScope()
     var showCurrencyPicker by remember { mutableStateOf(false) }
-    var showAddDialog by remember { mutableStateOf(false) }
-    var editingCategory by remember { mutableStateOf<Category?>(null) }
-    var deleteConfirmCategory by remember { mutableStateOf<Category?>(null) }
 
     val currencyName = try {
         JavaCurrency.getInstance(currencyCode).displayName
@@ -81,15 +77,6 @@ fun SettingsScreen(
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(Icons.Default.Add, "Add category")
-            }
         }
     ) { padding ->
         Column(
@@ -162,12 +149,40 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            CategoryListContent(
-                categories = categories,
-                onEdit = { editingCategory = it },
-                onDelete = { deleteConfirmCategory = it },
-                modifier = Modifier.fillMaxWidth()
-            )
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onManageCategories() },
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Categories",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            "${categories.size} ${if (categories.size == 1) "category" else "categories"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Manage categories",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
         }
@@ -178,50 +193,8 @@ fun SettingsScreen(
             currentCode = currencyCode,
             onDismiss = { showCurrencyPicker = false },
             onSelect = { code ->
-                scope.launch {
-                    preferencesManager.setCurrencyCode(code)
-                }
+                scope.launch { preferencesManager.setCurrencyCode(code) }
                 showCurrencyPicker = false
-            }
-        )
-    }
-
-    if (showAddDialog || editingCategory != null) {
-        CategoryDialog(
-            existingCategory = editingCategory,
-            onDismiss = {
-                showAddDialog = false
-                editingCategory = null
-            },
-            onSave = { name, colorIndex ->
-                if (editingCategory != null) {
-                    categoryViewModel.updateCategory(editingCategory!!.copy(name = name, colorIndex = colorIndex))
-                } else {
-                    categoryViewModel.addCategory(name, colorIndex)
-                }
-                showAddDialog = false
-                editingCategory = null
-            }
-        )
-    }
-
-    deleteConfirmCategory?.let { category ->
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { deleteConfirmCategory = null },
-            title = { Text("Delete Category") },
-            text = { Text("Delete \"${category.name}\"?\nExpenses in this category will become uncategorized.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    categoryViewModel.deleteCategory(category)
-                    deleteConfirmCategory = null
-                }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { deleteConfirmCategory = null }) {
-                    Text("Cancel")
-                }
             }
         )
     }

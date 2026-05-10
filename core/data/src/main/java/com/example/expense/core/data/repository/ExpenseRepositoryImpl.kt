@@ -79,4 +79,7 @@ internal class ExpenseRepositoryImpl(private val dao: ExpenseDao) : ExpenseRepos
         val now = YearMonth.now()
         return getMonthRange(now.year, now.monthValue - 1)
     }
+
+    override fun getCategoryUsageCounts(): Flow<List<com.example.expense.core.domain.model.CategoryUsage>> =
+        dao.getCategoryUsageCounts()
 }

@@ -2,6 +2,7 @@ package com.example.expense.core.domain.repository
 
 import com.example.expense.core.domain.model.AccountTotal
 import com.example.expense.core.domain.model.CategoryTotal
+import com.example.expense.core.domain.model.CategoryUsage
 import com.example.expense.core.domain.model.ExpenseItem
 import kotlinx.coroutines.flow.Flow
 
@@ -33,4 +34,5 @@ interface ExpenseRepository {
     fun getMonthRange(year: Int, month: Int): Pair<Long, Long>
     fun getYearToDateRange(year: Int, month: Int): Pair<Long, Long>
     fun getCurrentMonthRange(): Pair<Long, Long>
+    fun getCategoryUsageCounts(): Flow<List<CategoryUsage>>
 }
