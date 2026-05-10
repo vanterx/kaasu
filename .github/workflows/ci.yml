@@ -38,7 +38,7 @@ jobs:
           echo "keyPassword=${{ secrets.KEYSTORE_KEY_PASSWORD }}" >> keystore.properties
 
       - name: Run unit tests
-        run: ./gradlew test
+        run: chmod +x gradlew && ./gradlew test
 
       - name: Upload test results
         if: always()
