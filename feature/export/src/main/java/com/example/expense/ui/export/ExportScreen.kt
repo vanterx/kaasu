@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -35,7 +39,7 @@ import com.example.expense.util.CsvExporter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExportScreen(viewModel: ExportViewModel) {
+fun ExportScreen(viewModel: ExportViewModel, onOpenDrawer: () -> Unit = {}) {
     val context = LocalContext.current
     val exportResult by viewModel.exportResult.collectAsState()
 
@@ -46,7 +50,17 @@ fun ExportScreen(viewModel: ExportViewModel) {
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Export Data") }) }
+        topBar = {
+            TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                title = { Text("Export Data") },
+                actions = {
+                    IconButton(onClick = onOpenDrawer) {
+                        Icon(Icons.Default.Menu, "Menu")
+                    }
+                }
+            )
+        }
     ) { padding ->
         Box(
             modifier = Modifier

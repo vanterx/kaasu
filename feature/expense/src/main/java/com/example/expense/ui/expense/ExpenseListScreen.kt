@@ -35,7 +35,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -84,7 +84,7 @@ fun ExpenseListScreen(
     currencyCode: String,
     onAddExpense: () -> Unit,
     onEditExpense: (ExpenseItem) -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenDrawer: () -> Unit
 ) {
     val dailyGroups by viewModel.dailyGroups.collectAsState()
     val dayTotal by viewModel.dayTotal.collectAsState()
@@ -153,8 +153,8 @@ fun ExpenseListScreen(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Default.Settings, "Settings")
+                    IconButton(onClick = onOpenDrawer) {
+                        Icon(Icons.Default.Menu, "Menu")
                     }
                 }
             )

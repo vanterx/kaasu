@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,7 +60,7 @@ import com.example.expense.util.formatMonthYear
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChartScreen(viewModel: ChartViewModel, currencyCode: String) {
+fun ChartScreen(viewModel: ChartViewModel, currencyCode: String, onOpenDrawer: () -> Unit = {}) {
     val categoryTotals by viewModel.categoryTotals.collectAsState()
     val accountTotals by viewModel.accountTotals.collectAsState()
     val total by viewModel.monthlyTotal.collectAsState()
@@ -92,6 +93,9 @@ fun ChartScreen(viewModel: ChartViewModel, currencyCode: String) {
                 actions = {
                     IconButton(onClick = { viewModel.nextMonth() }) {
                         Icon(Icons.Default.ChevronRight, "Next month")
+                    }
+                    IconButton(onClick = onOpenDrawer) {
+                        Icon(Icons.Default.Menu, "Menu")
                     }
                 }
             )
